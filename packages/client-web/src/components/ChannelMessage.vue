@@ -3,33 +3,21 @@
     {{ message.event }}
   </div>
   <div class="flex items-end space-x-2" v-else>
-    <UserAvatar
-      class="w-8 h-8 rounded-full"
-      :id="sender.avatar"
-      :class="{
-        'opacity-0': !lastFromSender,
-      }"
-    />
-    <div
-      class="max-w-md p-2 rounded-md"
-      :class="{
-        'bg-primary-500 text-white': sentByMe,
-        'bg-gray-800': !sentByMe,
-      }"
-    >
-      <p v-if="!sentByMe && lastFromSender" class="text-xs text-gray-400">
-        {{ sender.name }}
-      </p>
-      <div class="text-sm break-all whitespace-pre-wrap" v-html="body"></div>
-      <p
-        class="text-xs"
-        :class="{
-          'text-white': sentByMe,
-          'text-gray-400': !sentByMe,
-        }"
-      >
-        {{ time }}
-      </p>
+    <div v-if="sentByMe" class="place-self-end">
+      <Message :body="body" :sentByMe="sentByMe" :lastFromSender="lastFromSender"
+        :sender="sender" :time="time"/>
+      <EmbedAvatar :avatar="sender.avatar" :lastFromSender="lastFromSender"/>
+    </div>
+
+    <div v-else-if="!sentByMe">
+      <EmbedAvatar :avatar="sender.avatar" :lastFromSender="lastFromSender"/>
+      <!--
+      bash code for how I wrote that line
+      I know
+      for i in body sentByMe lastFromSender sender time; do printf ":$i=\"$i\" "; done
+      -->
+      <Message :body="body" :sentByMe="sentByMe" :lastFromSender="lastFromSender"
+        :sender="sender" :time="time"/>
     </div>
   </div>
 </template>
@@ -142,7 +130,8 @@ export default {
     clearInterval(this.timeUpdateInterval);
   },
   components: {
-    UserAvatar: () => import("./UserAvatar"),
+    Message: () => import("./Message"),
+    EmbedAvatar: () => import("./EmbedAvatar"),
   },
 };
 </script>
