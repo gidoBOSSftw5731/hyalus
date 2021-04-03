@@ -100,6 +100,7 @@
         class="flex items-center px-4 py-3 space-x-4 border-t border-gray-800"
         v-if="channel.writable"
       >
+        <!-- textttbox -->
         <textarea
           rows="1"
           placeholder="Send a message"
@@ -109,6 +110,7 @@
           @keydown="messageKeydown"
           ref="msgBox"
         />
+        <!--attachment button-->
         <div class="flex space-x-2 text-gray-400">
           <PaperclipIcon
             class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
@@ -153,7 +155,6 @@ export default {
       lastTyping: 0,
       typingStatus: "",
       typingStatusInterval: null,
-      lastChannel: null,
     };
   },
   computed: {
@@ -221,14 +222,17 @@ export default {
         this.groupNameModal = true;
       }
     },
-    async voiceJoin() {
+    voiceJoin() {
       if (this.$store.getters.voice?.channel !== this.channel.id) {
-        await this.$store.dispatch("voiceLeave");
-        await this.$store.dispatch("voiceJoin", this.channel.id);
+        if (this.$store.getters.voice) {
+          this.$store.dispatch("voiceLeave");
+        }
+
+        this.$store.dispatch("voiceJoin", this.channel.id);
       }
 
       if (!this.$store.getters.localStream("audio")) {
-        await this.$store.dispatch("toggleAudio", {
+        this.$store.dispatch("toggleAudio", {
           silent: true,
         });
       }
@@ -281,12 +285,8 @@ export default {
     }
 
     const msgEl = this.$refs.messages;
-    const msgBox = this.$refs.msgBox;
 
-    if (
-      (msgEl && msgEl.scrollTop === this.lastScrollTop) ||
-      this.lastChannel !== this.channel
-    ) {
+    if (msgEl && msgEl.scrollTop === this.lastScrollTop) {
       msgEl.scrollTop = msgEl.scrollHeight;
       this.lastScrollTop = msgEl.scrollTop;
     } else {
@@ -298,12 +298,6 @@ export default {
     } else {
       document.title = "Hyalus";
     }
-
-    if (msgBox && this.lastChannel !== this.channel) {
-      msgBox.focus();
-    }
-
-    this.lastChannel = this.channel;
   },
   beforeMount() {
     this.updateTypingStatus();
