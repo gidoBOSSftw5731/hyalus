@@ -6,39 +6,44 @@
     <UserAvatar
       class="w-8 h-8 rounded-full"
       :id="sender.avatar"
-      :class="{
-        'opacity-0': !lastFromSender,
-      }"
+      v-if="lastFromSender"
     />
-    <div
-      class="max-w-md p-2 rounded-md"
-      :class="{
-        'bg-primary-500 text-white': sentByMe,
-        'bg-gray-800': !sentByMe,
-      }"
-    >
-      <p v-if="!sentByMe && lastFromSender" class="text-xs text-gray-400">
-        {{ sender.name }}
-      </p>
-      <div class="text-sm break-all whitespace-pre-wrap" v-html="body"></div>
-      <p
-        class="text-xs"
+    <div class="p-4" v-else />
+    <div class="flex items-center space-x-4 group">
+      <div
+        class="max-w-md p-2 rounded-md"
         :class="{
-          'text-white': sentByMe,
-          'text-gray-400': !sentByMe,
+          'bg-primary-500 text-white': sentByMe,
+          'bg-gray-800': !sentByMe,
         }"
       >
-        {{ time }}
-      </p>
+        <p v-if="!sentByMe && lastFromSender" class="text-xs text-gray-400">
+          {{ sender.name }}
+        </p>
+        <div class="text-sm break-all whitespace-pre-wrap" v-html="body"></div>
+        <p
+          class="text-xs"
+          :class="{
+            'text-white': sentByMe,
+            'text-gray-400': !sentByMe,
+          }"
+        >
+          {{ time }}
+        </p>
+      </div>
+      <div
+        class="text-gray-400 transition opacity-0 cursor-pointer group-hover:opacity-100 hover:text-gray-200"
+        v-if="sentByMe"
+        @click="remove"
+      >
+        <TrashIcon class="w-5 h-5" />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import moment from "moment";
-import MarkdownIt from "markdown-it";
-import MarkdownItEmoji from "markdown-it-emoji";
-import MarkdownItLinkAttr from "markdown-it-link-attributes";
 
 export default {
   props: ["message"],
@@ -91,30 +96,7 @@ export default {
       }
     },
     body() {
-      if (this.message.decrypted) {
-        return new MarkdownIt("zero", {
-          html: false,
-          linkify: true,
-        })
-          .enable([
-            "emphasis",
-            "strikethrough",
-            "backticks",
-            "fence",
-            "linkify",
-          ])
-          .use(MarkdownItEmoji)
-          .use(MarkdownItLinkAttr, {
-            attrs: {
-              target: "_blank",
-              rel: "noopener noreferrer",
-            },
-          })
-          .renderInline(this.message.decrypted)
-          .trim();
-      } else {
-        return "[Failed to decrypt message]";
-      }
+      return this.message.formatted || "[Failed to decrypt message]";
     },
   },
   methods: {
@@ -137,8 +119,8 @@ export default {
         .replace(" ago", "")
         .replace("in ", "");
     },
-    async delete() {
-      await this.$store.dispatch("deleteMesasge", this.message);
+    async remove() {
+      await this.$store.dispatch("deleteMessage", this.message);
     },
   },
   beforeMount() {
@@ -150,6 +132,7 @@ export default {
   },
   components: {
     UserAvatar: () => import("./UserAvatar"),
+    TrashIcon: () => import("../icons/Trash"),
   },
 };
 </script>

@@ -10,6 +10,9 @@ import sndNavBackward from "../sounds/navigation_backward-selection.ogg";
 import sndNavForward from "../sounds/navigation_forward-selection.ogg";
 import router from "../router";
 import userImage from "../images/user.webp";
+import MarkdownIt from "markdown-it";
+import MarkdownItEmoji from "markdown-it-emoji";
+import MarkdownItLinkAttr from "markdown-it-link-attributes";
 
 Vue.use(Vuex);
 
@@ -184,6 +187,13 @@ export default new Vuex.Store({
         state.friends.push({ ...oldFriend, ...friend });
       }
     },
+    setFriendUser(state, friendUser) {
+      const friend = state.friends.find((f) => f.id === friendUser.friend);
+      friend.user = {
+        ...friend.user,
+        ...friendUser,
+      };
+    },
     setChannel(state, channel) {
       const merged = {
         ...state.channels.find((c) => c.id === channel.id),
@@ -193,11 +203,6 @@ export default new Vuex.Store({
       state.channels = state.channels.filter((c) => c.id !== channel.id);
 
       if (!merged.delete) {
-        if (merged.type === "dm") {
-          merged.name = merged.users[0].name;
-          merged.avatar = merged.users[0].avatar;
-        }
-
         if (!merged.messages) {
           merged.messages = [];
         }
@@ -228,10 +233,12 @@ export default new Vuex.Store({
         }
 
         channel.users.push(merged);
-      }
 
-      state.channels = state.channels.filter((c) => c.id !== channel.id);
-      state.channels.push(channel);
+        if (channel.type === "dm") {
+          channel.name = merged.name;
+          channel.avatar = merged.avatar;
+        }
+      }
     },
     setMessage(state, message) {
       const channel = state.channels.find((c) => c.id === message.channel);
@@ -291,14 +298,28 @@ export default new Vuex.Store({
             merged.decrypted = nacl.to_string(decryptedBody);
           }
 
-          //check if we are supposed to send a push notif and if so send it
-          if (localStorage.getItem("pushNotification") === "true") {
-            new Notification(`New Message from ${sender.name}`, {
-              "body": `${truncateString(merged.decrypted, 150)}`,
-              "icon": "/a31d8dafc822eefc1f4dd1d28e4a097e.webp",
+          if (!merged.formatted && merged.decrypted) {
+            merged.formatted = new MarkdownIt("zero", {
+              html: false,
+              linkify: true,
             })
+              .enable([
+                "emphasis",
+                "strikethrough",
+                "backticks",
+                "fence",
+                "linkify",
+              ])
+              .use(MarkdownItEmoji)
+              .use(MarkdownItLinkAttr, {
+                attrs: {
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                },
+              })
+              .renderInline(merged.decrypted)
+              .trim();
           }
-
         }
 
 
@@ -767,6 +788,10 @@ export default new Vuex.Store({
           commit("setFriend", data.d);
         }
 
+        if (data.t === "friendUser") {
+          commit("setFriendUser", data.d);
+        }
+
         if (data.t === "channel") {
           commit("setChannel", data.d);
 
@@ -870,7 +895,7 @@ export default new Vuex.Store({
 
         setTimeout(() => {
           dispatch("wsConnect");
-        }, 1000 * 5); //5s
+        }, 1000 * 3); //3s
       };
 
       commit("setWs", ws);
@@ -1129,7 +1154,7 @@ export default new Vuex.Store({
       });
     },
     async deleteMessage({}, data) {
-      await axios.delete(`/api/channels/${data.channel}/${data.id}`);
+      await axios.delete(`/api/channels/${data.channel}/messages/${data.id}`);
     },
     async createGroup({}, { name, users }) {
       await axios.post("/api/channels", {

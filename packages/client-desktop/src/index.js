@@ -77,6 +77,11 @@ const start = () => {
     if (input.key === "F5") {
       mainWindow.reload();
     }
+
+    if (input.key === "F6") {
+      app.relaunch();
+      app.exit();
+    }
   });
 
   mainWindow.on("close", (e) => {
@@ -173,4 +178,16 @@ autoUpdater.on("update-not-available", start);
 
 ipcMain.on("close", () => {
   mainWindow.close();
+});
+
+ipcMain.on("maximize", () => {
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow.maximize();
+  }
+});
+
+ipcMain.on("minimize", () => {
+  mainWindow.minimize();
 });
