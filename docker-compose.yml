@@ -21,3 +21,4 @@ services:
       - redis
 volumes:
   db:
+    - db:/opt/hyalus
