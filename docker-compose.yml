@@ -4,7 +4,7 @@ services:
     image: mongo
     restart: always
     volumes:
-      - db:/data/db
+      - db:/opt/hyalus
   redis:
     image: redis
     restart: always
@@ -20,5 +20,4 @@ services:
       - mongo
       - redis
 volumes:
-  db:
-    - db:/opt/hyalus
+  db: 
