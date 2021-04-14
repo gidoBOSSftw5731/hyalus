@@ -13,8 +13,12 @@
       <div
         class="flex items-center justify-between p-4 border-b border-gray-800"
       >
+      <div :class="{ 'cursor-pointer': channel.admin }" @click="setAvatar">
         <div class="flex items-center space-x-4">
-          <div :class="{ 'cursor-pointer': channel.admin }" @click="setAvatar">
+          <ToggleSidebar v-bind:class="{
+          'hidden': this.$store.getters.showSidebar
+          }"
+          class="w-8 h-8 p-2 transition rounded-full hover:bg-gray-650 bg-gray-750 text-gray-400"/>
             <UserAvatar
               class="w-12 h-12 rounded-full"
               :id="channel.avatar"
@@ -381,6 +385,7 @@ export default {
     GroupCreateModal: () => import("../components/GroupCreateModal"),
     GroupAddModal: () => import("../components/GroupAddModal"),
     GroupSidebar: () => import("../components/GroupSidebar"),
+    ToggleSidebar: () => import("../components/ToggleSidebar"),
     PencilIcon: () => import("../icons/Pencil"),
   },
 };
