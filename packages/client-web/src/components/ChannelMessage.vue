@@ -2,11 +2,7 @@
   <div
     class="w-full flex flex-col"
     :class="{
-<<<<<<< HEAD
-      'pt-1.5': (firstFromSender || !lastMessageRecent),
-=======
       'pt-2': firstFromSender || !precedingRecent,
->>>>>>> 889eae245055ec5887b917a8b7f66801a8843178
     }"
   >
     <div class="text-center text-sm text-gray-400 py-6" v-if="section">
@@ -26,11 +22,7 @@
       class="flex group items-center space-x-2"
       :class="{
         'ml-auto flex-row-reverse space-x-reverse': sentByMe && messageSides,
-<<<<<<< HEAD
-        '-mt-0.5': (!(firstFromSender) && lastMessageRecent), 
-=======
         '-mt-0.5': !firstFromSender && precedingRecent,
->>>>>>> 889eae245055ec5887b917a8b7f66801a8843178
       }"
       v-else
     >
@@ -40,11 +32,7 @@
           :id="sender.avatar"
           @mouseover.native="senderCard = true"
           @mouseleave.native="senderCard = false"
-<<<<<<< HEAD
-          v-if="lastFromSender || (!firstFromSender && firstMessageOld)"
-=======
           v-if="lastFromSender || !supersedingRecent"
->>>>>>> 889eae245055ec5887b917a8b7f66801a8843178
         />
         <!--The page that shows up when you hover over an avatar-->
         <div
