@@ -1,0 +1,6 @@
+- GUI need to be locked, so no scrolling outside of the chat
+- Messages should be pushed up with the touch keyboard (mobile devices)
+- Gestures to open and close sidebar (hamburger menu icon is weirdly placed and unintuitive)
+- Click on channel to hide sidebar
+- Extend GUI to top of iOS menu bar (to take advantage of black-translucent)
+- Service worker page (or notification/in-page banner) for updates/offline

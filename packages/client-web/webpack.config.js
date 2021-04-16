@@ -83,14 +83,15 @@ module.exports = {
       description: 'Encrypted community-based chat',
       background_color: '#ffffff',
       publicPath: ".",
+      start_url: "./login",
       ios: {
         'apple-mobile-web-app-title': 'Hyalus',
         'apple-mobile-web-app-status-bar-style': 'black-translucent'
       },
       icons: [
         {
-          src: path.resolve('src/images/logo-bg.png'),
-          size: '192x192',
+          src: path.resolve('src/images/icon-bg.webp'),
+          size: '569x569',
           ios: true
         }
       ]
