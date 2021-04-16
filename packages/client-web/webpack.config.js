@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { VueLoaderPlugin } = require("vue-loader");
 const TerserPlugin = require("terser-webpack-plugin");
 const { ProgressPlugin } = require("webpack");
+const WorkboxPlugin = require('workbox-webpack-plugin');
 
 module.exports = {
   mode: "production",
@@ -66,10 +67,15 @@ module.exports = {
   plugins: [
     new VueLoaderPlugin(),
     new HtmlWebpackPlugin({
+      title: 'Progressive Web Application',
       template: path.join(__dirname, "src/index.html"),
       minify: true,
     }),
     new ProgressPlugin(),
+    new WorkboxPlugin.GenerateSW({
+      clientsClaim: true,
+      skipWaiting: true,
+    }),
   ],
   externals: ["path", "crypto", "os", "electron", "fs"],
   cache: {
