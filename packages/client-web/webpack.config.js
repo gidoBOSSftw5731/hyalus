@@ -4,6 +4,7 @@ const { VueLoaderPlugin } = require("vue-loader");
 const TerserPlugin = require("terser-webpack-plugin");
 const { ProgressPlugin } = require("webpack");
 const WorkboxPlugin = require('workbox-webpack-plugin');
+var WebpackPwaManifest = require('webpack-pwa-manifest')
 
 module.exports = {
   mode: "production",
@@ -75,6 +76,24 @@ module.exports = {
     new WorkboxPlugin.GenerateSW({
       clientsClaim: true,
       skipWaiting: true,
+    }),
+    new WebpackPwaManifest({
+      name: 'Hyalus',
+      short_name: 'Hyalus',
+      description: 'Encrypted community-based chat',
+      background_color: '#ffffff',
+      publicPath: ".",
+      ios: {
+        'apple-mobile-web-app-title': 'Hyalus',
+        'apple-mobile-web-app-status-bar-style': 'black-translucent'
+      },
+      icons: [
+        {
+          src: path.resolve('src/images/logo-bg.png'),
+          size: '192x192',
+          ios: true
+        }
+      ]
     }),
   ],
   externals: ["path", "crypto", "os", "electron", "fs"],
