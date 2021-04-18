@@ -1,4 +1,4 @@
-#PWA Issues/Features Needed To Do
+# PWA Issues/Features Needed To Do
 
 - GUI need to be locked, so no scrolling outside of the chat
 - Messages should be pushed up with the touch keyboard (mobile devices)
