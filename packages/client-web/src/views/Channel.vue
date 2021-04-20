@@ -75,7 +75,6 @@
             />
           </div>
           <div
-            class="relative"
             v-if="channel.type === 'group'"
             @click="groupMembers = !groupMembers"
           >
@@ -92,25 +91,38 @@
         You can't send messages in this channel.
       </p>
       <div class="flex flex-1 min-h-0 relative">
-        <div
-          ref="messages"
-          class="flex flex-col flex-1 p-3 space-y-1 overflow-auto"
-          @scroll="messagesScroll"
-        >
+        <div class="absolute p-2 z-10 w-full" v-if="typingStatus">
           <div
-            class="px-4 py-2 text-sm bg-gray-800 w-full sticky top-0 rounded-md border-gray-750 border flex items-center space-x-4 shadow-lg z-10"
-            v-if="typingStatus"
+            :class="{
+              'pr-80': groupMembers,
+            }"
           >
-            <PencilIcon class="w-4 h-4 text-gray-400" />
-            <p>{{ typingStatus }}</p>
+            <div
+              class="px-4 py-2 text-sm bg-gray-800 rounded-md border border-gray-750 flex items-center space-x-4 shadow-lg w-full"
+            >
+              <PencilIcon class="w-4 h-4 text-gray-400" />
+              <p>{{ typingStatus }}</p>
+            </div>
           </div>
+        </div>
+        <div
+          class="flex flex-col flex-1 p-3 space-y-1 overflow-auto"
+          @mousewheel="messagesWheel"
+          @scroll="messagesScroll"
+          ref="messageList"
+        >
           <ChannelMessage
             v-for="message in channel.messages"
             v-bind:key="message.id"
             :message="message"
           />
         </div>
-        <GroupSidebar v-if="groupMembers" :channel="channel" />
+        <GroupSidebar
+          class="absolute top-0 right-0"
+          v-if="groupMembers"
+          :channel="channel"
+          @close="groupMembers = false"
+        />
       </div>
       <div
         class="flex items-center px-4 py-3 space-x-4 border-t border-gray-800"
@@ -123,7 +135,7 @@
           v-model="message"
           @input="messageInput"
           @keydown="messageKeydown"
-          ref="msgBox"
+          ref="messageInput"
         />
         <div class="flex space-x-2 text-gray-400">
           <div @click="attachFile">
@@ -160,11 +172,12 @@ export default {
       groupCreateModal: false,
       groupNameModal: false,
       groupMembers: false,
-      lastScrollTop: 0,
       lastTyping: 0,
       typingStatus: "",
       typingStatusInterval: null,
-      lastChannel: null,
+      scrollInterval: null,
+      lastScrollAutomatic: true,
+      lastScrollBottom: true,
     };
   },
   computed: {
@@ -195,8 +208,10 @@ export default {
   },
   methods: {
     messageInput() {
-      this.$refs.msgBox.style.height = "auto";
-      this.$refs.msgBox.style.height = `${this.$refs.msgBox.scrollHeight}px`;
+      const { messageInput } = this.$refs;
+
+      messageInput.style.height = "auto";
+      messageInput.style.height = `${messageInput.scrollHeight}px`;
 
       //send messageTyping every 1s
       if (
@@ -257,11 +272,6 @@ export default {
 
       this.$router.push(`/channels/${this.channel.id}/call`);
     },
-    messagesScroll({ target }) {
-      if (!target.scrollTop && target.scrollHeight !== target.clientHeight) {
-        this.$store.dispatch("getChannelHistory", this.channel.id);
-      }
-    },
     updateTypingStatus() {
       if (!this.channel) {
         return;
@@ -289,11 +299,6 @@ export default {
 
       if (users.length > 3) {
         this.typingStatus = "Many users are typing...";
-      }
-    },
-    updateMessages() {
-      if (this.channel && !this.channel.updated) {
-        this.$store.dispatch("updateChannel", this.channel.id);
       }
     },
     async uploadFile(file) {
@@ -325,48 +330,63 @@ export default {
       el.type = "file";
       el.click();
     },
-  },
-  updated() {
-    const msgEl = this.$refs.messages;
-    const msgBox = this.$refs.msgBox;
-
-    if (msgEl) {
-      if (
-        msgEl.scrollTop === this.lastScrollTop ||
-        this.lastChannel !== this.channel
-      ) {
-        msgEl.scrollTop = msgEl.scrollHeight;
-        this.lastScrollTop = msgEl.scrollTop;
-      } else {
-        this.lastScrollTop = msgEl.scrollHeight - msgEl.clientHeight;
+    update() {
+      if (!this.channel) {
+        return this.$router.push("/app");
       }
-    }
 
-    if (this.channel) {
       document.title = `Hyalus \u2022 ${this.channel.name}`;
-    } else {
-      this.$router.push("/app");
-    }
 
-    if (msgBox && this.lastChannel !== this.channel) {
-      msgBox.focus();
-    }
+      const { messageInput, messageList } = this.$refs;
 
-    this.lastChannel = this.channel;
+      if (messageInput && this.lastChannel !== this.channel) {
+        messageInput.focus();
+      }
+
+      if (messageList && !this.messageListObserver) {
+        this.messageListObserver = new MutationObserver(this.updateScroll);
+        this.messageListObserver.observe(messageList, {
+          childList: true,
+        });
+      }
+
+      if (!this.channel.updated) {
+        this.$store.dispatch("updateChannel", this.channel.id);
+      }
+
+      this.lastScrollBottom = true;
+      this.updateScroll();
+    },
+    messagesWheel(e) {
+      this.lastScrollAutomatic = false;
+    },
+    messagesScroll({ target }) {
+      this.lastScrollBottom =
+        this.lastScrollAutomatic ||
+        target.scrollTop === target.scrollHeight - target.clientHeight;
+    },
+    updateScroll() {
+      const { messageList } = this.$refs;
+
+      if (messageList && this.lastScrollBottom) {
+        this.lastScrollAutomatic = true;
+        messageList.scrollTop = messageList.scrollHeight;
+      }
+    },
   },
-  beforeMount() {
-    this.updateMessages();
-    this.updateTypingStatus();
+  mounted() {
+    this.update();
+    this.scrollInterval = setInterval(this.updateScroll, 100);
     this.typingStatusInterval = setInterval(this.updateTypingStatus, 100);
   },
   beforeDestroy() {
     document.title = "Hyalus";
+    clearInterval(this.scrollInterval);
     clearInterval(this.typingStatusInterval);
   },
   watch: {
     $route() {
-      this.updateMessages();
-      this.updateTypingStatus();
+      this.update();
     },
   },
   components: {
