@@ -129,6 +129,8 @@ export default new Vuex.Store({
     vadEnabled: localStorage.vadEnabled,
     messageSides: localStorage.messageSides,
     syntaxTheme: localStorage.syntaxTheme,
+    invite: null,
+    sidebarHidden: false,
   },
   getters: {
     config: (state) => state.config,
@@ -173,6 +175,8 @@ export default new Vuex.Store({
     vadEnabled: (state) => !state.vadEnabled,
     messageSides: (state) => state.messageSides,
     syntaxTheme: (state) => state.syntaxTheme || "tomorrow-night",
+    invite: (state) => state.invite,
+    sidebarHidden: (state) => state.sidebarHidden,
   },
   mutations: {
     setUser(state, user) {
@@ -490,7 +494,7 @@ export default new Vuex.Store({
           merged.event = `${sender.name} left the group`;
         }
 
-        channel.messages.push(merged);
+        channel.messages.push(Object.freeze(merged));
         channel.messages = channel.messages.sort((a, b) => {
           return a.id > b.id ? 1 : -1;
         });
@@ -758,6 +762,12 @@ export default new Vuex.Store({
     },
     resetFriends(state) {
       state.friends = [];
+    },
+    setInvite(state, invite) {
+      state.invite = invite;
+    },
+    setSidebarHidden(state, sidebarHidden) {
+      state.sidebarHidden = sidebarHidden;
     },
   },
   actions: {
@@ -2439,6 +2449,13 @@ export default new Vuex.Store({
     async setVadEnabled({ getters, commit, dispatch }, val) {
       commit("setVadEnabled", val);
       await dispatch("restartLocalStream", "audio");
+    },
+    async getInvite({ getters, commit, dispatch }, username) {
+      const { data: invite } = await axios.get(`/api/users/${username}`);
+      commit("setInvite", invite);
+    },
+    async processInvite({ getters, commit, dispatch }) {
+      await dispatch("addFriend", getters.invite.username);
     },
   },
 });
