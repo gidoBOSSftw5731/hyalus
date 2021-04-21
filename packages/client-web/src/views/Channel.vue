@@ -11,7 +11,7 @@
       @dragsend.prevent
     >
       <div
-        class="flex items-center justify-between p-4 border-b border-gray-800"
+        class="flex items-center justify-between px-2 py-4 border-b border-gray-800 min-w-0 space-x-2"
       >
       <div :class="{ 'cursor-pointer': channel.admin }" @click="setAvatar">
         <div class="flex items-center space-x-4">
@@ -31,9 +31,9 @@
               {{ channel.name.slice(0, 1).toUpperCase() }}
             </div>
           </div>
-          <div>
+          <div class="min-w-0">
             <p
-              class="font-bold"
+              class="font-bold truncate"
               :class="{ 'cursor-pointer': channel.admin }"
               @click="setName"
             >
@@ -57,60 +57,53 @@
               <p>+{{ voiceUsers.length - voiceUsersShown.length }}</p>
             </div>
           </div>
-          <div class="flex space-x-2">
-            <div @click="voiceJoin(false)">
-              <PhoneIcon
-                class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-              />
-            </div>
-            <div @click="voiceJoin(true)">
-              <VideoIcon
-                class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-              />
-            </div>
-          </div>
-          <div v-if="channel.type === 'dm'" @click="groupCreateModal = true">
-            <UserAddIcon
+          <div @click="voiceJoin(false)">
+            <PhoneIcon
               class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
             />
           </div>
-          <div
-            class="relative"
-            v-if="channel.type === 'group'"
-            @click="groupMembers = !groupMembers"
-          >
-            <GroupIcon
+          <div @click="showInfo = !showInfo">
+            <DotsIcon
               class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
             />
           </div>
-          <DotsIcon
-            class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-          />
         </div>
       </div>
       <p class="px-4 py-2 text-sm bg-gray-800" v-if="!channel.writable">
         You can't send messages in this channel.
       </p>
       <div class="flex flex-1 min-h-0 relative">
+        <div class="absolute p-2 z-10 w-full" v-if="typingStatus">
+          <div
+            :class="{
+              'pr-80': showInfo,
+            }"
+          >
+            <div
+              class="px-4 py-2 text-sm bg-gray-800 rounded-md border border-gray-750 flex items-center space-x-4 shadow-lg w-full"
+            >
+              <PencilIcon class="w-4 h-4 text-gray-400" />
+              <p>{{ typingStatus }}</p>
+            </div>
+          </div>
+        </div>
         <div
-          ref="messages"
           class="flex flex-col flex-1 p-3 space-y-1 overflow-auto"
           @scroll="messagesScroll"
+          ref="messageList"
         >
-          <div
-            class="px-4 py-2 text-sm bg-gray-800 w-full sticky top-0 rounded-md border-gray-750 border flex items-center space-x-4 shadow-lg z-10"
-            v-if="typingStatus"
-          >
-            <PencilIcon class="w-4 h-4 text-gray-400" />
-            <p>{{ typingStatus }}</p>
-          </div>
           <ChannelMessage
             v-for="message in channel.messages"
             v-bind:key="message.id"
             :message="message"
           />
         </div>
-        <GroupSidebar v-if="groupMembers" :channel="channel" />
+        <ChannelInfo
+          class="absolute top-0 right-0"
+          v-if="showInfo"
+          :channel="channel"
+          @close="showInfo = false"
+        />
       </div>
       <div
         class="flex items-center px-4 py-3 space-x-4 border-t border-gray-800"
@@ -123,7 +116,7 @@
           v-model="message"
           @input="messageInput"
           @keydown="messageKeydown"
-          ref="msgBox"
+          ref="messageInput"
         />
         <div class="flex space-x-2 text-gray-400">
           <div @click="attachFile">
@@ -143,11 +136,6 @@
         @close="groupNameModal = false"
         :channel="channel"
       />
-      <GroupCreateModal
-        v-if="groupCreateModal"
-        @close="groupCreateModal = false"
-        :selected="channel.users[0].id"
-      />
     </div>
   </div>
 </template>
@@ -157,14 +145,15 @@ export default {
   data() {
     return {
       message: "",
-      groupCreateModal: false,
       groupNameModal: false,
-      groupMembers: false,
-      lastScrollTop: 0,
+      showInfo: false,
       lastTyping: 0,
       typingStatus: "",
       typingStatusInterval: null,
-      lastChannel: null,
+      scrollInterval: null,
+      lastScrollAutomatic: true,
+      lastScrollBottom: true,
+      lastScrollTop: 0,
     };
   },
   computed: {
@@ -195,8 +184,10 @@ export default {
   },
   methods: {
     messageInput() {
-      this.$refs.msgBox.style.height = "auto";
-      this.$refs.msgBox.style.height = `${this.$refs.msgBox.scrollHeight}px`;
+      const { messageInput } = this.$refs;
+
+      messageInput.style.height = "auto";
+      messageInput.style.height = `${messageInput.scrollHeight}px`;
 
       //send messageTyping every 1s
       if (
@@ -235,7 +226,7 @@ export default {
         this.groupNameModal = true;
       }
     },
-    async voiceJoin(video) {
+    async voiceJoin() {
       if (this.$store.getters.voice?.channel !== this.channel.id) {
         await this.$store.dispatch("voiceLeave");
         await this.$store.dispatch("voiceJoin", this.channel.id);
@@ -244,23 +235,12 @@ export default {
           await this.$store.dispatch("toggleAudio", {
             silent: true,
           });
-
-          if (video) {
-            await this.$store.dispatch("toggleVideo", {
-              silent: true,
-            });
-          }
         } catch (e) {
           console.log(e);
         }
       }
 
       this.$router.push(`/channels/${this.channel.id}/call`);
-    },
-    messagesScroll({ target }) {
-      if (!target.scrollTop && target.scrollHeight !== target.clientHeight) {
-        this.$store.dispatch("getChannelHistory", this.channel.id);
-      }
     },
     updateTypingStatus() {
       if (!this.channel) {
@@ -289,11 +269,6 @@ export default {
 
       if (users.length > 3) {
         this.typingStatus = "Many users are typing...";
-      }
-    },
-    updateMessages() {
-      if (this.channel && !this.channel.updated) {
-        this.$store.dispatch("updateChannel", this.channel.id);
       }
     },
     async uploadFile(file) {
@@ -325,55 +300,72 @@ export default {
       el.type = "file";
       el.click();
     },
-  },
-  updated() {
-    const msgEl = this.$refs.messages;
-    const msgBox = this.$refs.msgBox;
-
-    if (msgEl) {
-      if (
-        msgEl.scrollTop === this.lastScrollTop ||
-        this.lastChannel !== this.channel
-      ) {
-        msgEl.scrollTop = msgEl.scrollHeight;
-        this.lastScrollTop = msgEl.scrollTop;
-      } else {
-        this.lastScrollTop = msgEl.scrollHeight - msgEl.clientHeight;
+    update() {
+      if (!this.channel) {
+        return this.$router.push("/app");
       }
-    }
 
-    if (this.channel) {
       document.title = `Hyalus \u2022 ${this.channel.name}`;
-    } else {
-      this.$router.push("/app");
-    }
 
-    if (msgBox && this.lastChannel !== this.channel) {
-      msgBox.focus();
-    }
+      const { messageInput, messageList } = this.$refs;
 
-    this.lastChannel = this.channel;
+      if (messageInput && this.lastChannel !== this.channel) {
+        messageInput.focus();
+      }
+
+      if (messageList && !this.messageListObserver) {
+        this.messageListObserver = new MutationObserver(this.updateScroll);
+        this.messageListObserver.observe(messageList, {
+          childList: true,
+        });
+      }
+
+      if (!this.channel.updated) {
+        this.$store.dispatch("updateChannel", this.channel.id);
+      }
+
+      this.lastScrollBottom = true;
+      this.updateScroll();
+    },
+    messagesScroll({ target }) {
+      const lastScrollAutomatic = this.lastScrollTop === target.scrollTop;
+
+      this.lastScrollBottom =
+        lastScrollAutomatic ||
+        target.scrollTop === target.scrollHeight - target.clientHeight;
+
+      if (!lastScrollAutomatic && target.scrollTop === 0) {
+        this.$store.dispatch("getChannelHistory", this.channel.id);
+      }
+    },
+    updateScroll() {
+      const { messageList } = this.$refs;
+
+      if (messageList && this.lastScrollBottom) {
+        messageList.scrollTop = messageList.scrollHeight;
+        this.lastScrollTop = messageList.scrollTop;
+      }
+    },
   },
-  beforeMount() {
-    this.updateMessages();
-    this.updateTypingStatus();
+  mounted() {
+    this.update();
+    this.scrollInterval = setInterval(this.updateScroll, 100);
     this.typingStatusInterval = setInterval(this.updateTypingStatus, 100);
   },
   beforeDestroy() {
     document.title = "Hyalus";
+    clearInterval(this.scrollInterval);
     clearInterval(this.typingStatusInterval);
   },
   watch: {
     $route() {
-      this.updateMessages();
-      this.updateTypingStatus();
+      this.update();
     },
   },
   components: {
     UserAvatar: () => import("../components/UserAvatar"),
     Sidebar: () => import("../components/Sidebar"),
     PhoneIcon: () => import("../icons/Phone"),
-    VideoIcon: () => import("../icons/Video"),
     UserAddIcon: () => import("../icons/UserAdd"),
     DotsIcon: () => import("../icons/Dots"),
     PaperclipIcon: () => import("../icons/Paperclip"),
@@ -384,9 +376,10 @@ export default {
     GroupNameModal: () => import("../components/GroupNameModal"),
     GroupCreateModal: () => import("../components/GroupCreateModal"),
     GroupAddModal: () => import("../components/GroupAddModal"),
-    GroupSidebar: () => import("../components/GroupSidebar"),
     ToggleSidebar: () => import("../components/ToggleSidebar"),
     PencilIcon: () => import("../icons/Pencil"),
+    ArrowLeftIcon: () => import("../icons/ArrowLeft"),
+    ChannelInfo: () => import("../components/ChannelInfo"),
   },
 };
 </script>

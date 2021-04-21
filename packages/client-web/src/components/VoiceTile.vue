@@ -63,8 +63,9 @@ export default {
   props: ["tile"],
   data() {
     return {
-      isFullscreen: false,
+      track: null,
       srcObject: null,
+      isFullscreen: false,
     };
   },
   computed: {
@@ -109,11 +110,21 @@ export default {
 
       this.isFullscreen = !this.isFullscreen;
     },
+    updateTrack() {
+      if (
+        this.tile.stream?.track.kind === "video" &&
+        this.track !== this.tile.stream.track
+      ) {
+        this.track = this.tile.stream.track;
+        this.srcObject = new MediaStream([this.track]);
+      }
+    },
   },
   mounted() {
-    if (this.tile.stream?.track.kind === "video") {
-      this.srcObject = new MediaStream([this.tile.stream.track]);
-    }
+    this.updateTrack();
+  },
+  updated() {
+    this.updateTrack();
   },
   components: {
     UserAvatar: () => import("./UserAvatar"),

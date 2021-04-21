@@ -31,3 +31,7 @@ if ('serviceWorker' in navigator) {
     router,
   });
 })();
+
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.register("/service-worker.js");
+}

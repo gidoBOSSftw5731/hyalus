@@ -3,8 +3,8 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { VueLoaderPlugin } = require("vue-loader");
 const TerserPlugin = require("terser-webpack-plugin");
 const { ProgressPlugin } = require("webpack");
-const WorkboxPlugin = require('workbox-webpack-plugin');
-var WebpackPwaManifest = require('webpack-pwa-manifest')
+const CopyPlugin = require("copy-webpack-plugin");
+const { GenerateSW } = require("workbox-webpack-plugin");
 
 module.exports = {
   mode: "production",
@@ -73,29 +73,15 @@ module.exports = {
       minify: true,
     }),
     new ProgressPlugin(),
-    new WorkboxPlugin.GenerateSW({
-      clientsClaim: true,
-      skipWaiting: true,
-    }),
-    new WebpackPwaManifest({
-      name: 'Hyalus',
-      short_name: 'Hyalus',
-      description: 'Encrypted community-based chat',
-      background_color: '#ffffff',
-      publicPath: ".",
-      start_url: "./login",
-      ios: {
-        'apple-mobile-web-app-title': 'Hyalus',
-        'apple-mobile-web-app-status-bar-style': 'black-translucent'
-      },
-      icons: [
+    new CopyPlugin({
+      patterns: [
         {
-          src: path.resolve('src/images/icon-bg.webp'),
-          size: '569x569',
-          ios: true
-        }
-      ]
+          from: path.join(__dirname, "src/static"),
+        },
+      ],
     }),
+    new GenerateSW(),
+
   ],
   externals: ["path", "crypto", "os", "electron", "fs"],
   cache: {

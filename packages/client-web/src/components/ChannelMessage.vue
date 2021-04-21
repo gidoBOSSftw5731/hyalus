@@ -2,11 +2,11 @@
   <div
     class="w-full flex flex-col"
     :class="{
-      'pt-2': firstFromSender || !precedingRecent,
+      'pt-2': precedingMessage && (firstFromSender || !precedingRecent),
     }"
   >
-    <div class="text-center text-sm text-gray-400 py-6" v-if="section">
-      {{ date }}
+    <div class="text-xs text-gray-400 pl-10 pb-1" v-if="showSender">
+      {{ sender.name }}
     </div>
     <div
       class="text-center text-sm text-gray-400"
@@ -26,7 +26,7 @@
       }"
       v-else
     >
-      <div class="w-8 h-8 self-end relative">
+      <div class="w-8 h-8 self-end relative flex-shrink-0">
         <UserAvatar
           class="rounded-full"
           :id="sender.avatar"
@@ -160,8 +160,6 @@ export default {
   props: ["message"],
   data() {
     return {
-      ago: "",
-      timeUpdateInterval: null,
       senderCard: false,
       showImageView: false,
     };
@@ -242,13 +240,6 @@ export default {
 
       return `${Math.round(len * 10) / 10} ${unit}`;
     },
-    section() {
-      return (
-        !this.precedingMessage ||
-        moment(this.precedingMessage.time).day() !==
-          moment(this.message.time).day()
-      );
-    },
     date() {
       return moment(this.message.time).format("M/D/Y");
     },
@@ -285,6 +276,14 @@ export default {
         this.supersedingMessage?.time - this.message.time < recentThreshold
       );
     },
+    showSender() {
+      return (
+        this.channel.type !== "dm" &&
+        !this.message.event &&
+        !this.sentByMe &&
+        (this.firstFromSender || !this.precedingRecent)
+      );
+    },
   },
   methods: {
     async remove() {
@@ -306,7 +305,7 @@ export default {
       el.click();
     },
   },
-  beforeMount() {
+  created() {
     if (this.message.fileMediaType && !this.message.blob) {
       this.fetchFile();
     }

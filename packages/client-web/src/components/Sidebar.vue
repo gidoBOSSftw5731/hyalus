@@ -3,11 +3,11 @@
     class="flex flex-col w-full h-full max-w-xs min-h-0 border-r border-gray-750 bg-gray-850"
    :class="{ 'hidden':  !this.$store.getters.showSidebar }">
     <div class="flex items-center px-2 py-4 border-b border-gray-750">
-      <div class="flex items-center flex-1 ">
+      <div class="flex items-center flex-1 min-w-0 space-x-2">
         <UserAvatar class="w-12 h-12 rounded-full" :id="user.avatar" />
-        <div class="ml-4">
-          <p class="font-bold">{{ user.name }}</p>
-          <p class="text-xs text-gray-400">@{{ user.username }}</p>
+        <div class="ml-4 flex-1 min-w-0">
+          <p class="font-bold truncate">{{ user.name }}</p>
+          <p class="text-xs text-gray-400 truncate">@{{ user.username }}</p>
         </div>
       </div>
       <div class="flex items-center space-x-2 text-gray-400">
@@ -62,6 +62,9 @@ export default {
     },
     voice() {
       return this.$store.getters.voice;
+    },
+    hidden() {
+      return this.$store.getters.sidebarHidden;
     },
   },
   components: {

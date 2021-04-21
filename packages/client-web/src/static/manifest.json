@@ -1,0 +1,22 @@
+{
+  "name": "Hyalus",
+  "start_url": "/app",
+  "background_color": "#18181b",
+  "theme_color": "#18181b",
+  "display": "standalone",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon.webp",
+      "type": "image/webp",
+      "sizes": "318x318",
+      "purpose": "monochrome"
+    },
+    {
+      "src": "/icons/icon-bg.webp",
+      "type": "image/webp",
+      "sizes": "569x569",
+      "purpose": "any"
+    }
+  ]
+}

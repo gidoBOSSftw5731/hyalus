@@ -4,27 +4,45 @@ module.exports = (deps) => (chan, msg) => {
   chan = chan.toString().split(":");
   msg = msgpack.decode(msg);
 
+  const targets = [];
+
   if (chan[0] === "ws") {
-    [...deps.wss.clients]
-      .filter((w) => w.id === chan[1])
-      .map((w) => {
-        w.send(msg);
-      });
+    targets.push(...[...deps.wss.clients].filter((w) => w.id === chan[1]));
   }
 
   if (chan[0] === "user") {
-    [...deps.wss.clients]
-      .filter((w) => w.session && w.session.user.equals(chan[1]))
-      .map((w) => {
-        w.send(msg);
-      });
+    targets.push(
+      ...[...deps.wss.clients].filter(
+        (w) => w.session && w.session.user.equals(chan[1])
+      )
+    );
   }
 
   if (chan[0] === "voice") {
-    [...deps.wss.clients]
-      .filter((w) => w.voiceChannel && w.voiceChannel.equals(chan[1]))
-      .map((w) => {
-        w.send(msg);
-      });
+    targets.push(
+      ...[...deps.wss.clients].filter(
+        (w) => w.voiceChannel && w.voiceChannel.equals(chan[1])
+      )
+    );
+  }
+
+  if (chan[0] === "session") {
+    targets.push(
+      ...[...deps.wss.clients].filter(
+        (w) => w.session && w.session._id.equals(chan[1])
+      )
+    );
+  }
+
+  for (const w of targets) {
+    w.send(msg);
+
+    if (msg.t === "close") {
+      w.close();
+    }
+
+    if (msg.t === "voiceKick") {
+      w.voiceChannel = null;
+    }
   }
 };

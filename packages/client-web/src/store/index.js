@@ -129,6 +129,8 @@ export default new Vuex.Store({
     vadEnabled: localStorage.vadEnabled,
     messageSides: localStorage.messageSides,
     syntaxTheme: localStorage.syntaxTheme,
+    invite: null,
+    sidebarHidden: false,
   },
   getters: {
     config: (state) => state.config,
@@ -173,12 +175,14 @@ export default new Vuex.Store({
     vadEnabled: (state) => !state.vadEnabled,
     messageSides: (state) => state.messageSides,
     syntaxTheme: (state) => state.syntaxTheme || "tomorrow-night",
+    invite: (state) => state.invite,
+    sidebarHidden: (state) => state.sidebarHidden,
   },
   mutations: {
     setUser(state, user) {
       state.user = { ...state.user, ...user };
 
-      if (user.accentColor) {
+      if (user?.accentColor) {
         localStorage.setItem("accentColor", user.accentColor);
       }
     },
@@ -490,7 +494,7 @@ export default new Vuex.Store({
           merged.event = `${sender.name} left the group`;
         }
 
-        channel.messages.push(merged);
+        channel.messages.push(Object.freeze(merged));
         channel.messages = channel.messages.sort((a, b) => {
           return a.id > b.id ? 1 : -1;
         });
@@ -759,6 +763,12 @@ export default new Vuex.Store({
     resetFriends(state) {
       state.friends = [];
     },
+    setInvite(state, invite) {
+      state.invite = invite;
+    },
+    setSidebarHidden(state, sidebarHidden) {
+      state.sidebarHidden = sidebarHidden;
+    },
   },
   actions: {
     async register({ commit, dispatch }, data) {
@@ -958,18 +968,17 @@ export default new Vuex.Store({
       await axios.get("/api/logout");
       dispatch("reset");
     },
-    reset({ commit }) {
-      if (typeof process !== "undefined" && process.env.DEV) {
-        console.log("Ignoring reset (DEV=1)");
-        return;
-      }
+    async reset({ getters, commit, dispatch }) {
+      await dispatch("voiceLeave");
 
       commit("setWs", null);
       commit("setUser", null);
       commit("setToken", null);
       commit("setPublicKey", null);
       commit("setPrivateKey", null);
-      location.reload();
+      commit("setSalt", null);
+
+      router.push("/login");
     },
     wsConnect({ commit, dispatch, getters }) {
       const wsBaseUrl = getters.baseUrl.replace("http", "ws");
@@ -982,6 +991,12 @@ export default new Vuex.Store({
         if (ws.readyState === WebSocket.OPEN) {
           ws._send(msgpack.encode(data));
         }
+      };
+
+      ws._close = ws.close;
+      ws.close = () => {
+        ws.closedManually = true;
+        ws._close();
       };
 
       ws.onopen = () => {
@@ -1008,7 +1023,7 @@ export default new Vuex.Store({
 
         if (data.t === "close") {
           if (data.d.reset) {
-            dispatch("reset");
+            await dispatch("reset");
           }
         }
 
@@ -1049,8 +1064,12 @@ export default new Vuex.Store({
               t: "voiceJoin",
               d: getters.voice?.channel,
             });
+
+            for (const stream of getters.voice.localStreams) {
+              await dispatch("restartLocalStream", stream.type);
+            }
           } else {
-            dispatch("voiceLeave", {
+            await dispatch("voiceLeave", {
               silent: true,
             });
           }
@@ -1095,7 +1114,9 @@ export default new Vuex.Store({
           if (getters.voice && data.d.channel === getters.voice.channel) {
             if (data.d.voiceConnected) {
               dispatch("handleVoiceUserJoin", data.d.id);
-            } else {
+            }
+
+            if (data.d.voiceConnected === false) {
               dispatch("handleVoiceUserLeave", {
                 user: data.d.id,
               });
@@ -1142,6 +1163,10 @@ export default new Vuex.Store({
       };
 
       ws.onclose = async () => {
+        if (ws.closedManually) {
+          return;
+        }
+
         setTimeout(() => {
           dispatch("wsConnect");
         }, 1000 * 3); //3s
@@ -1150,11 +1175,9 @@ export default new Vuex.Store({
           if (getters.ready && getters.ws?.readyState !== WebSocket.OPEN) {
             commit("setReady", false);
 
-            if (getters.voice) {
-              await dispatch("voiceReset", {
-                onlyStopPeers: true,
-              });
-            }
+            await dispatch("voiceReset", {
+              onlyStopPeers: true,
+            });
           }
         }, 1000 * 5); //15s
       };
@@ -1498,6 +1521,10 @@ export default new Vuex.Store({
       } catch {}
     },
     async voiceReset({ getters, commit, dispatch }, params) {
+      if (!getters.voice) {
+        return;
+      }
+
       for (const stream of getters.voice.localStreams) {
         await dispatch("stopLocalStream", {
           type: stream.type,
@@ -1514,6 +1541,12 @@ export default new Vuex.Store({
       }
     },
     async handleVoiceStreamOffer({ getters, commit, dispatch }, data) {
+      const stream = getters.remoteStream(data.user, data.type);
+
+      if (stream && stream.peer.connectionState !== "closed") {
+        stream.peer.close();
+      }
+
       const channel = getters.channelById(getters.voice.channel);
       const user = channel.users.find((user) => user.id === data.user);
 
@@ -1594,6 +1627,10 @@ export default new Vuex.Store({
             type: data.type,
             delete: true,
           });
+        }
+
+        if (peer.connectionState === "disconnected") {
+          peer.restartIce();
         }
       };
 
@@ -1686,7 +1723,7 @@ export default new Vuex.Store({
       if (data.initiator) {
         const stream = getters.remoteStream(data.user, data.type);
 
-        if (!stream) {
+        if (!stream || stream.peer.connectionState === "closed") {
           const queuedIce = {
             user: data.user,
             type: data.type,
@@ -1719,27 +1756,24 @@ export default new Vuex.Store({
         await peer.addIceCandidate(candidate);
       }
     },
-    async handleVoiceUserJoin({ getters, commit, dispatch }, userId) {
+    async handleVoiceUserJoin({ getters, commit, dispatch }, user) {
       const channel = getters.channelById(getters.voice.channel);
-      const user = channel.users.find((u) => u.id === userId);
 
-      if (user.voiceConnected) {
-        await dispatch("handleVoiceUserLeave", {
-          user: userId,
-          silent: true,
+      await dispatch("handleVoiceUserLeave", {
+        user,
+        silent: true,
+      });
+
+      for (const stream of getters.voice.localStreams) {
+        await dispatch("sendLocalStream", {
+          user,
+          type: stream.type,
         });
-      } else {
-        try {
-          new Audio(sndStateUp).play();
-        } catch {}
       }
 
-      getters.voice.localStreams.map((stream) => {
-        dispatch("sendLocalStream", {
-          type: stream.type,
-          user: userId,
-        });
-      });
+      try {
+        new Audio(sndStateUp).play();
+      } catch {}
     },
     async handleVoiceUserLeave({ getters, commit, dispatch }, params) {
       for (const stream of getters.voice.localStreams) {
@@ -1759,7 +1793,7 @@ export default new Vuex.Store({
       for (const stream of getters.voice.remoteStreams.filter(
         (stream) => stream.user === params.user
       )) {
-        dispatch("stopRemoteStream", {
+        await dispatch("stopRemoteStream", {
           user: params.user,
           type: stream.type,
         });
@@ -1862,9 +1896,17 @@ export default new Vuex.Store({
         }
       };
 
-      peer.onconnectionstatechange = () => {
+      peer.onconnectionstatechange = async () => {
         if (Vue.config.devtools) {
           console.log(`${data.type} -> ${data.user}: ${peer.connectionState}`);
+        }
+
+        if (peer.connectionState === "disconnected") {
+          peer.restartIce();
+        }
+
+        if (peer.connectionState === "failed") {
+          await dispatch("sendLocalStream", data);
         }
       };
 
@@ -1942,16 +1984,18 @@ export default new Vuex.Store({
           //why not put the pkg name into a variable?
           //webpack! :)
           if (typeof process === "undefined") {
-            const { default: Rnnoise } = await import("@hyalusapp/rnnoise");
+            const { default: Rnnoise } = await import(
+              "@hyalusapp/wasm-rnnoise"
+            );
             const { default: RnnoiseWasm } = await import(
-              `@hyalusapp/rnnoise/dist/rnnoise.wasm`
+              `@hyalusapp/wasm-rnnoise/dist/rnnoise.wasm`
             );
 
             rnnoise = await Rnnoise({
               locateFile: () => RnnoiseWasm,
             });
           } else {
-            rnnoise = await eval("require('@hyalusapp/rnnoise')")();
+            rnnoise = await eval("require('@hyalusapp/wasm-rnnoise')")();
           }
 
           await rnnoise.ready;
@@ -2405,6 +2449,13 @@ export default new Vuex.Store({
     async setVadEnabled({ getters, commit, dispatch }, val) {
       commit("setVadEnabled", val);
       await dispatch("restartLocalStream", "audio");
+    },
+    async getInvite({ getters, commit, dispatch }, username) {
+      const { data: invite } = await axios.get(`/api/users/${username}`);
+      commit("setInvite", invite);
+    },
+    async processInvite({ getters, commit, dispatch }) {
+      await dispatch("addFriend", getters.invite.username);
     },
   },
 });
