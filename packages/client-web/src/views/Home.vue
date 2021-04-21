@@ -4,7 +4,7 @@
     <div class="flex flex-col items-center w-full py-20">
       <AppIcon class="w-32 h-32" />
       <h1 class="mt-8 text-6xl font-bold tracking-tight">
-        Talk on an open platform
+        Talk on an open platform!
       </h1>
       <p class="max-w-lg mt-6 text-lg text-center text-gray-400">
         With cryptographically secure messages &amp; calls, talk on the platform
@@ -38,34 +38,34 @@
           <LockIcon
             class="w-12 h-12 p-3 text-gray-400 bg-gray-700 rounded-full"
           />
-          <h1 class="mt-4 text-2xl font-bold">Secure</h1>
-          <p class="mt-2 text-gray-400">
+          <h1 class="text-center mt-4 text-2xl font-bold">Secure</h1>
+          <p class="text-center mt-2 text-gray-400">
             All communications are secured with end-to-end encryption that's
             well documented and audited.
           </p>
-          <a class="mt-4 text-primary-500" href="#">Learn more</a>
+          <a class="text-center mt-4 text-primary-500" href="#">Learn more</a>
         </div>
         <div class="flex flex-col max-w-xs">
           <ChipIcon
             class="w-12 h-12 p-3 text-gray-400 bg-gray-700 rounded-full"
           />
-          <h1 class="mt-4 text-2xl font-bold">Open</h1>
-          <p class="mt-2 text-gray-400">
+          <h1 class="text-center mt-4 text-2xl font-bold">Open</h1>
+          <p class="text-center mt-2 text-gray-400">
             Don't take our word for it, anyone can audit the app's code for
             themselves and improve on it.
           </p>
-          <a class="mt-4 text-primary-500" href="#">Learn more</a>
+          <a class="text-center mt-4 text-primary-500" href="#">Learn more</a>
         </div>
         <div class="flex flex-col max-w-xs">
           <PrivateIcon
             class="w-12 h-12 p-3 text-gray-400 bg-gray-700 rounded-full"
           />
-          <h1 class="mt-4 text-2xl font-bold">Private</h1>
-          <p class="mt-2 text-gray-400">
+          <h1 class="text-center mt-4 text-2xl font-bold">Private</h1>
+          <p class="text-center mt-2 text-gray-400">
             The entire platform is engineered with privacy in mind, it's
             impossible for our team to read your chats.
           </p>
-          <a class="mt-4 text-primary-500" href="#">Learn more</a>
+          <a class="text-center mt-4 text-primary-500" href="#">Learn more</a>
         </div>
       </div>
     </div>
