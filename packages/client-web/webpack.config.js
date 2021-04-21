@@ -81,6 +81,7 @@ module.exports = {
       ],
     }),
     new GenerateSW(),
+
   ],
   externals: ["path", "crypto", "os", "electron", "fs"],
   cache: {
