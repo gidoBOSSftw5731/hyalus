@@ -376,7 +376,6 @@ export default {
     GroupNameModal: () => import("../components/GroupNameModal"),
     GroupCreateModal: () => import("../components/GroupCreateModal"),
     GroupAddModal: () => import("../components/GroupAddModal"),
-    GroupSidebar: () => import("../components/GroupSidebar"),
     ToggleSidebar: () => import("../components/ToggleSidebar"),
     PencilIcon: () => import("../icons/Pencil"),
     ArrowLeftIcon: () => import("../icons/ArrowLeft"),
