@@ -11,7 +11,7 @@
       @dragsend.prevent
     >
       <div
-        class="flex items-center justify-between p-4 border-b border-gray-800"
+        class="flex items-center justify-between px-2 py-4 border-b border-gray-800 min-w-0 space-x-2"
       >
       <div :class="{ 'cursor-pointer': channel.admin }" @click="setAvatar">
         <div class="flex items-center space-x-4">
@@ -31,9 +31,9 @@
               {{ channel.name.slice(0, 1).toUpperCase() }}
             </div>
           </div>
-          <div>
+          <div class="min-w-0">
             <p
-              class="font-bold"
+              class="font-bold truncate"
               :class="{ 'cursor-pointer': channel.admin }"
               @click="setName"
             >
@@ -57,34 +57,16 @@
               <p>+{{ voiceUsers.length - voiceUsersShown.length }}</p>
             </div>
           </div>
-          <div class="flex space-x-2">
-            <div @click="voiceJoin(false)">
-              <PhoneIcon
-                class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-              />
-            </div>
-            <div @click="voiceJoin(true)">
-              <VideoIcon
-                class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-              />
-            </div>
-          </div>
-          <div v-if="channel.type === 'dm'" @click="groupCreateModal = true">
-            <UserAddIcon
+          <div @click="voiceJoin(false)">
+            <PhoneIcon
               class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
             />
           </div>
-          <div
-            v-if="channel.type === 'group'"
-            @click="groupMembers = !groupMembers"
-          >
-            <GroupIcon
+          <div @click="showInfo = !showInfo">
+            <DotsIcon
               class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
             />
           </div>
-          <DotsIcon
-            class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-          />
         </div>
       </div>
       <p class="px-4 py-2 text-sm bg-gray-800" v-if="!channel.writable">
@@ -94,7 +76,7 @@
         <div class="absolute p-2 z-10 w-full" v-if="typingStatus">
           <div
             :class="{
-              'pr-80': groupMembers,
+              'pr-80': showInfo,
             }"
           >
             <div
@@ -107,7 +89,6 @@
         </div>
         <div
           class="flex flex-col flex-1 p-3 space-y-1 overflow-auto"
-          @mousewheel="messagesWheel"
           @scroll="messagesScroll"
           ref="messageList"
         >
@@ -117,11 +98,11 @@
             :message="message"
           />
         </div>
-        <GroupSidebar
+        <ChannelInfo
           class="absolute top-0 right-0"
-          v-if="groupMembers"
+          v-if="showInfo"
           :channel="channel"
-          @close="groupMembers = false"
+          @close="showInfo = false"
         />
       </div>
       <div
@@ -155,11 +136,6 @@
         @close="groupNameModal = false"
         :channel="channel"
       />
-      <GroupCreateModal
-        v-if="groupCreateModal"
-        @close="groupCreateModal = false"
-        :selected="channel.users[0].id"
-      />
     </div>
   </div>
 </template>
@@ -169,15 +145,15 @@ export default {
   data() {
     return {
       message: "",
-      groupCreateModal: false,
       groupNameModal: false,
-      groupMembers: false,
+      showInfo: false,
       lastTyping: 0,
       typingStatus: "",
       typingStatusInterval: null,
       scrollInterval: null,
       lastScrollAutomatic: true,
       lastScrollBottom: true,
+      lastScrollTop: 0,
     };
   },
   computed: {
@@ -250,7 +226,7 @@ export default {
         this.groupNameModal = true;
       }
     },
-    async voiceJoin(video) {
+    async voiceJoin() {
       if (this.$store.getters.voice?.channel !== this.channel.id) {
         await this.$store.dispatch("voiceLeave");
         await this.$store.dispatch("voiceJoin", this.channel.id);
@@ -259,12 +235,6 @@ export default {
           await this.$store.dispatch("toggleAudio", {
             silent: true,
           });
-
-          if (video) {
-            await this.$store.dispatch("toggleVideo", {
-              silent: true,
-            });
-          }
         } catch (e) {
           console.log(e);
         }
@@ -357,20 +327,23 @@ export default {
       this.lastScrollBottom = true;
       this.updateScroll();
     },
-    messagesWheel(e) {
-      this.lastScrollAutomatic = false;
-    },
     messagesScroll({ target }) {
+      const lastScrollAutomatic = this.lastScrollTop === target.scrollTop;
+
       this.lastScrollBottom =
-        this.lastScrollAutomatic ||
+        lastScrollAutomatic ||
         target.scrollTop === target.scrollHeight - target.clientHeight;
+
+      if (!lastScrollAutomatic && target.scrollTop === 0) {
+        this.$store.dispatch("getChannelHistory", this.channel.id);
+      }
     },
     updateScroll() {
       const { messageList } = this.$refs;
 
       if (messageList && this.lastScrollBottom) {
-        this.lastScrollAutomatic = true;
         messageList.scrollTop = messageList.scrollHeight;
+        this.lastScrollTop = messageList.scrollTop;
       }
     },
   },
@@ -393,7 +366,6 @@ export default {
     UserAvatar: () => import("../components/UserAvatar"),
     Sidebar: () => import("../components/Sidebar"),
     PhoneIcon: () => import("../icons/Phone"),
-    VideoIcon: () => import("../icons/Video"),
     UserAddIcon: () => import("../icons/UserAdd"),
     DotsIcon: () => import("../icons/Dots"),
     PaperclipIcon: () => import("../icons/Paperclip"),
@@ -407,6 +379,8 @@ export default {
     GroupSidebar: () => import("../components/GroupSidebar"),
     ToggleSidebar: () => import("../components/ToggleSidebar"),
     PencilIcon: () => import("../icons/Pencil"),
+    ArrowLeftIcon: () => import("../icons/ArrowLeft"),
+    ChannelInfo: () => import("../components/ChannelInfo"),
   },
 };
 </script>
