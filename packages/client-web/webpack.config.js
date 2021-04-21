@@ -68,6 +68,7 @@ module.exports = {
   plugins: [
     new VueLoaderPlugin(),
     new HtmlWebpackPlugin({
+      title: 'Progressive Web Application',
       template: path.join(__dirname, "src/index.html"),
       minify: true,
     }),
@@ -80,6 +81,7 @@ module.exports = {
       ],
     }),
     new GenerateSW(),
+
   ],
   externals: ["path", "crypto", "os", "electron", "fs"],
   cache: {
