@@ -361,11 +361,6 @@ export default new Vuex.Store({
         }
 
         channel.users.push(merged);
-
-        if (channel.type === "dm") {
-          channel.name = merged.name;
-          channel.avatar = merged.avatar;
-        }
       }
     },
     setMessage(state, message) {
@@ -769,6 +764,29 @@ export default new Vuex.Store({
     setSidebarHidden(state, sidebarHidden) {
       state.sidebarHidden = sidebarHidden;
     },
+    setForeignUser(state, foreignUser) {
+      const channels = state.channels.filter((c) =>
+        c.users.find((u) => u.id === foreignUser.id)
+      );
+
+      channels.map((channel) => {
+        const old = channel.users.find((u) => u.id === foreignUser.id);
+        channel.users = channel.users.filter((u) => u !== old);
+        channel.users.push({
+          ...old,
+          ...foreignUser,
+        });
+      });
+
+      const friend = state.friends.find((f) => f.user.id === foreignUser.id);
+
+      if (friend) {
+        friend.user = {
+          ...friend.user,
+          ...foreignUser,
+        };
+      }
+    },
   },
   actions: {
     async register({ commit, dispatch }, data) {
@@ -1149,6 +1167,10 @@ export default new Vuex.Store({
         if (data.t === "voiceKick") {
           await dispatch("voiceReset", {});
           commit("setVoice", null);
+        }
+
+        if (data.t === "foreignUser") {
+          commit("setForeignUser", data.d);
         }
 
         //TODO: voice stream pausing/resuming capabilities.
@@ -2456,6 +2478,11 @@ export default new Vuex.Store({
     },
     async processInvite({ getters, commit, dispatch }) {
       await dispatch("addFriend", getters.invite.username);
+    },
+    async setPreferredStatus({ getters, commit, dispatch }, preferredStatus) {
+      await axios.post("/api/me", {
+        preferredStatus,
+      });
     },
   },
 });

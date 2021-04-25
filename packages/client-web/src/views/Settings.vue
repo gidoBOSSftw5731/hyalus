@@ -554,7 +554,7 @@ export default {
       this.syntaxThemeMenu = false;
     },
   },
-  async mounted() {
+  async created() {
     let audioStream;
     let videoStream;
 
@@ -587,6 +587,8 @@ export default {
     if (!this.videoInputDevices.find((d) => d === this.videoInput)) {
       this.setVideoInput(null);
     }
+
+    this.$store.commit("setSidebarHidden", true);
   },
   components: {
     Sidebar: () => import("../components/Sidebar"),

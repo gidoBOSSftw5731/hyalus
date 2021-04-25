@@ -1,22 +1,18 @@
 <template>
-  <div
+  <router-link
     class="flex items-center p-2 space-x-2 text-sm transition cursor-pointer hover:bg-gray-700"
-    @click="goto"
+    :to="`/channels/${channel.id}`"
   >
-    <UserAvatar
-      class="w-8 h-8 rounded-full"
-      :id="channel.avatar"
-      v-if="channel.avatar"
-    />
+    <UserAvatar class="w-8 h-8 rounded-full" :id="avatar" v-if="avatar" />
     <div
       class="flex items-center justify-center w-8 h-8 font-bold bg-primary-500 text-white rounded-full"
       v-else
     >
-      {{ channel.name.slice(0, 1).toUpperCase() }}
+      {{ name.slice(0, 1).toUpperCase() }}
     </div>
     <div class="flex-1 w-full min-w-0">
       <div class="flex items-baseline justify-between min-w-0 space-x-2">
-        <p class="font-bold truncate">{{ channel.name }}</p>
+        <p class="font-bold truncate">{{ name }}</p>
         <p class="text-xs text-gray-400">
           {{ time }}
         </p>
@@ -25,7 +21,7 @@
         {{ subtitle }}
       </p>
     </div>
-  </div>
+  </router-link>
 </template>
 
 <script>
@@ -40,6 +36,20 @@ export default {
     };
   },
   computed: {
+    avatar() {
+      if (this.channel.type === "dm") {
+        return this.channel.users[0].avatar;
+      }
+
+      return this.channel.avatar;
+    },
+    name() {
+      if (this.channel.type === "dm") {
+        return this.channel.users[0].name;
+      }
+
+      return this.channel.name;
+    },
     subtitle() {
       let subtitle = "No messages yet";
 
@@ -83,15 +93,8 @@ export default {
         .replace(" ago", "")
         .replace("in ", "");
     },
-    async goto() {
-      try {
-        await this.$router.push(`/channels/${this.channel.id}`);
-      } catch {}
-
-      this.$store.commit("setSidebarHidden", true);
-    },
   },
-  beforeMount() {
+  created() {
     this.updateTime();
     this.timeUpdateInterval = setInterval(this.updateTime, 1000);
   },

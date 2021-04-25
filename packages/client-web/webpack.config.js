@@ -4,7 +4,8 @@ const { VueLoaderPlugin } = require("vue-loader");
 const TerserPlugin = require("terser-webpack-plugin");
 const { ProgressPlugin } = require("webpack");
 const CopyPlugin = require("copy-webpack-plugin");
-const { GenerateSW } = require("workbox-webpack-plugin");
+//const { GenerateSW } = require("workbox-webpack-plugin");
+const WorkboxPlugin = require('workbox-webpack-plugin');
 
 module.exports = {
   mode: "production",
@@ -80,8 +81,9 @@ module.exports = {
         },
       ],
     }),
-    new GenerateSW(),
-
+    new WorkboxPlugin.GenerateSW({
+      exclude: ["/index.html"],
+    }),
   ],
   externals: ["path", "crypto", "os", "electron", "fs"],
   cache: {

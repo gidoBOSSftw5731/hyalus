@@ -75,6 +75,9 @@ export default {
       await this.$store.dispatch("removeFriend", id);
     },
   },
+  created() {
+    this.$store.commit("setSidebarHidden", true);
+  },
   components: {
     Sidebar: () => import("../components/Sidebar"),
     ToggleSidebar: () => import("../components/ToggleSidebar"),
