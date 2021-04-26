@@ -19,6 +19,7 @@
           Change
         </p>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <div class="flex">
           <p class="w-48 font-bold">Name</p>
@@ -28,6 +29,7 @@
           Change
         </p>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <div class="flex">
           <p class="w-48 font-bold">Username</p>
@@ -40,6 +42,7 @@
           Change
         </p>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <div class="flex">
           <p class="w-48 font-bold">Password</p>
@@ -54,34 +57,47 @@
           Change
         </p>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">2FA</p>
         <Toggle v-model="totpEnabled" />
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Send Typing Indicators</p>
         <Toggle v-model="sendTyping" />
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Adaptive Message Layout</p>
         <Toggle v-model="messageSides" />
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">RTC Echo Cancellation</p>
         <Toggle v-model="rtcEcho" />
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">RTC Noise Suppression</p>
         <Toggle v-model="rtcNoise" />
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">RTC Gain Control</p>
         <Toggle v-model="rtcGain" />
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Noise Cancellation</p>
         <Toggle v-model="vadEnabled" />
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
+      <div class="flex items-center justify-between h-12">
+        <p class="font-bold">Play Notification Sound</p>
+        <Toggle v-model="notifSound" />
+      </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Video Quality</p>
         <div class="flex flex-col">
@@ -111,6 +127,7 @@
           </div>
         </div>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Screenshare Quality</p>
         <div class="flex flex-col">
@@ -140,6 +157,7 @@
           </div>
         </div>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Speakers</p>
         <div class="flex flex-col">
@@ -172,6 +190,7 @@
           </div>
         </div>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Microphone</p>
         <div class="flex flex-col">
@@ -201,6 +220,7 @@
           </div>
         </div>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Webcam</p>
         <div class="flex flex-col">
@@ -230,6 +250,7 @@
           </div>
         </div>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">UI Color</p>
         <div class="flex flex-col">
@@ -276,6 +297,7 @@
           </div>
         </div>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Code Syntax Theme</p>
         <div class="flex flex-col">
@@ -305,6 +327,7 @@
           </div>
         </div>
       </div>
+      <vsDivider class="flex items-center justify-between" :color="divColor" />
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Logout</p>
         <div @click="logout">
@@ -404,6 +427,7 @@ export default {
         name,
       })),
       syntaxThemeMenu: false,
+      divColor:  "rgb(48, 48, 48)",
     };
   },
   computed: {
@@ -502,6 +526,14 @@ export default {
       },
       set(val) {
         this.$store.dispatch("setVadEnabled", val);
+      },
+    },
+    notifSound: {
+      get() {
+        return this.$store.getters.notifSound;
+      },
+      set(val) {
+        this.$store.dispatch("setNotifSound", val);
       },
     },
     messageSides: {
@@ -608,6 +640,7 @@ export default {
     ArrowDownIcon: () => import("../icons/ArrowDown"),
     LogoutIcon: () => import("../icons/Logout"),
     ToggleSidebar: () => import("../components/ToggleSidebar"),
+    vsDivider: () => import("../components/vsDivider"),
 
   },
 };

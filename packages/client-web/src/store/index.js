@@ -131,6 +131,7 @@ export default new Vuex.Store({
     syntaxTheme: localStorage.syntaxTheme,
     invite: null,
     sidebarHidden: false,
+    notifSound: localStorage.notifSound,
   },
   getters: {
     config: (state) => state.config,
@@ -177,6 +178,7 @@ export default new Vuex.Store({
     syntaxTheme: (state) => state.syntaxTheme || "tomorrow-night",
     invite: (state) => state.invite,
     sidebarHidden: (state) => state.sidebarHidden,
+    notifSound: (state) => !state.notifSound,
   },
   mutations: {
     setUser(state, user) {
@@ -505,6 +507,7 @@ export default new Vuex.Store({
         if (state.ready && merged.sender !== state.user.id && !message.silent) {
           sender.lastTyping = 0;
 
+
           let playSound = false;
 
           if (document.visibilityState === "hidden") {
@@ -521,7 +524,7 @@ export default new Vuex.Store({
             }
           }
 
-          if (!merged.decrypted) {
+          if (!merged.decrypted || state.notifSound) {
             playSound = false;
           }
 
@@ -729,6 +732,15 @@ export default new Vuex.Store({
         localStorage.removeItem("vadEnabled");
       } else {
         localStorage.setItem("vadEnabled", "a");
+      }
+    },
+    setNotifSound(state, val) {
+      state.notifSound = !val;
+
+      if (val) {
+        localStorage.removeItem("notifSound");
+      } else {
+        localStorage.setItem("notifSound", "a");
       }
     },
     setMessageSides(state, val) {
@@ -2327,6 +2339,7 @@ export default new Vuex.Store({
           //10mb
           //before you get excited, this is limited at the server as well.
           //TODO: present error to user.
+          //TODO: Allow for dynamic error size depending on server
           throw new Error("File size too large (10MB max).");
         }
 
@@ -2483,6 +2496,9 @@ export default new Vuex.Store({
       await axios.post("/api/me", {
         preferredStatus,
       });
+    },
+    async setNotifSound({ getters, commit, dispatch }, val) {
+      commit("setNotifSound", val);
     },
   },
 });
