@@ -24,7 +24,7 @@ SOFTWARE.
 -->
 
 <template lang="html">
-  <div class="vs-component vs-divider">
+  <div class="vs-component vs-divider h-4">
     <span
       :class="borderClass"
       :style="afterStyle"
