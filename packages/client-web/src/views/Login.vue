@@ -1,11 +1,11 @@
 <template>
-  <div class="flex items-center justify-center h-full">
+  <div class="flex-1 flex items-center justify-center h-full">
     <div
       class="flex flex-col w-full max-w-sm border rounded-md bg-gray-850 border-gray-750"
     >
-      <div class="p-8 border-b border-gray-750">
+      <div class="p-8 border-b border-gray-750 space-y-4">
         <AppIcon class="w-16 h-16" />
-        <p class="mt-6 text-3xl font-bold">Sign in to Hyalus</p>
+        <p class="text-3xl font-bold">Sign in to Hyalus</p>
       </div>
       <div
         class="flex items-center p-4 space-x-4 text-gray-300 border-b rounded-md bg-gray-850 border-gray-750"
@@ -23,6 +23,7 @@
                 class="w-full px-4 py-2 text-gray-400 bg-gray-900 border rounded-sm border-gray-750 focus:outline-none focus:border-gray-650"
                 type="text"
                 v-model="username"
+                autocomplete="username"
               />
             </div>
             <div class="space-y-2">
@@ -31,6 +32,7 @@
                 class="w-full px-4 py-2 text-gray-400 bg-gray-900 border rounded-sm border-gray-750 focus:outline-none focus:border-gray-650"
                 type="password"
                 v-model="password"
+                autocomplete="current-password"
               />
             </div>
           </div>

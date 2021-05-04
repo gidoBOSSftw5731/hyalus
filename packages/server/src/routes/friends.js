@@ -79,8 +79,8 @@ app.post(
         initiator: req.session.user,
         target: user._id,
         accepted: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
     ).ops[0];
 
@@ -91,7 +91,7 @@ app.post(
         user: {
           id: user._id.toString(),
           name: user.name,
-          avatar: user.avatar.toString(),
+          avatar: user.avatar?.toString(),
           username: user.username,
         },
         accepted: false,
@@ -106,7 +106,7 @@ app.post(
         user: {
           id: req.user._id.toString(),
           name: req.user.name,
-          avatar: req.user.avatar.toString(),
+          avatar: req.user.avatar?.toString(),
           username: req.user.username,
         },
         accepted: false,
@@ -168,7 +168,7 @@ app.post(
     await req.deps.db.collection("friends").updateOne(friend, {
       $set: {
         accepted: true,
-        updatedAt: Date.now(),
+        updatedAt: new Date(),
       },
     });
 
@@ -177,7 +177,7 @@ app.post(
       d: {
         id: friend._id.toString(),
         accepted: true,
-        updatedAt: Date.now(),
+        updatedAt: new Date(),
       },
     });
 
@@ -187,7 +187,7 @@ app.post(
         id: friend._id.toString(),
         accepted: true,
         acceptable: false,
-        updatedAt: Date.now(),
+        updatedAt: new Date(),
       },
     });
 
@@ -232,19 +232,19 @@ app.post(
         await req.deps.db.collection("channels").insertOne({
           type: "dm",
           writable: true,
-          created: Date.now(),
+          created: new Date(),
           users: [
             {
               id: friend.initiator,
               admin: false,
               removed: false,
-              added: Date.now(),
+              added: new Date(),
             },
             {
               id: friend.target,
               admin: false,
               removed: false,
-              added: Date.now(),
+              added: new Date(),
             },
           ],
         })
@@ -265,7 +265,7 @@ app.post(
             {
               id: req.user._id.toString(),
               name: req.user.name,
-              avatar: req.user.avatar.toString(),
+              avatar: req.user.avatar?.toString(),
               username: req.user.username,
               publicKey: req.user.publicKey.toString("base64"),
             },
@@ -284,7 +284,7 @@ app.post(
             {
               id: initatorUser._id.toString(),
               name: initatorUser.name,
-              avatar: initatorUser.avatar.toString(),
+              avatar: initatorUser.avatar?.toString(),
               username: initatorUser.username,
               publicKey: initatorUser.publicKey.toString("base64"),
             },

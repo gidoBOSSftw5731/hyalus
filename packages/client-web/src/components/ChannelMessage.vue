@@ -43,7 +43,11 @@
           }"
           v-if="senderCard"
         >
-          <UserAvatar class="w-12 h-12 rounded-full" :id="sender.avatar" />
+          <UserAvatar
+            class="w-12 h-12 rounded-full"
+            :id="sender.avatar"
+            autoplay
+          />
           <div
             :class="{
               'flex items-end flex-col': sentByMe && messageSides,
@@ -59,39 +63,41 @@
         class="max-w-xs lg:max-w-md xl:max-w-2xl rounded-md text-sm overflow-hidden"
         :class="{
           'bg-gradient-to-br from-primary-500 to-primary-600':
-            sentByMe && !message.fileMediaType,
-          'bg-gray-800': !sentByMe && !message.fileMediaType,
+            sentByMe && !message.preview,
+          'bg-gray-800': !sentByMe && !message.preview,
           'border border-primary-800': entirelyCode && sentByMe,
         }"
       >
         <div class="p-2" v-if="message.type === 'text'">
           <div class="break-words whitespace-pre-wrap" v-html="body" />
         </div>
-        <div
-          class="p-2"
-          v-if="message.type === 'file' && !message.fileMediaType"
-        >
+        <div class="p-2" v-if="message.type === 'file' && !message.preview">
           <div class="flex items-center space-x-2 py-1">
-            <div @click="saveFile">
+            <div @click="saveFile" v-if="!message.expired">
               <DownloadIcon
                 class="w-8 h-8 p-2 rounded-full bg-primary-400 text-white cursor-pointer"
               />
             </div>
+            <LetterXIcon
+              class="w-8 h-8 p-2 rounded-full bg-primary-400 text-white"
+              v-else
+            />
             <div>
               <p class="truncate">{{ message.decryptedFileName }}</p>
-              <p
+              <div
                 class="text-xs"
                 :class="{
                   'text-primary-200': sentByMe,
                   'text-gray-400': !sentByMe,
                 }"
               >
-                {{ fileLength }}
-              </p>
+                <p v-if="!message.expired">{{ fileLength }}</p>
+                <p v-else>Inaccessible</p>
+              </div>
             </div>
           </div>
         </div>
-        <div v-if="message.fileMediaType && message.blob">
+        <div v-if="message.preview">
           <img
             :src="message.blob"
             v-if="message.fileMediaType === 'img'"
@@ -111,7 +117,9 @@
             class="outline-none"
           />
         </div>
-        <div v-if="message.fileMediaType && !message.blob">
+        <div
+          v-if="message.fileMediaType && !message.preview && !message.expired"
+        >
           <LoadingIcon class="w-10 h-10 p-2" />
         </div>
       </div>
@@ -125,7 +133,7 @@
         <p
           class="opacity-0 group-hover:opacity-100 text-xs text-gray-400 transition"
         >
-          {{ date }} &bull; {{ time }}
+          {{ time }}
         </p>
         <div
           class="text-gray-400 transition opacity-0 cursor-pointer group-hover:opacity-100 hover:text-gray-200"
@@ -240,11 +248,8 @@ export default {
 
       return `${Math.round(len * 10) / 10} ${unit}`;
     },
-    date() {
-      return moment(this.message.time).format("M/D/Y");
-    },
     time() {
-      return moment(this.message.time).format("h:mm A");
+      return moment(this.message.time).format("l \u2022 LT");
     },
     messageSides() {
       return this.$store.getters.messageSides;
@@ -269,11 +274,15 @@ export default {
       );
     },
     precedingRecent() {
-      return this.message.time - this.precedingMessage?.time < recentThreshold;
+      return (
+        new Date(this.message.time) - new Date(this.precedingMessage?.time) <
+        recentThreshold
+      );
     },
     supersedingRecent() {
       return (
-        this.supersedingMessage?.time - this.message.time < recentThreshold
+        new Date(this.supersedingMessage?.time) - new Date(this.message.time) <
+        recentThreshold
       );
     },
     showSender() {
@@ -295,18 +304,20 @@ export default {
       }
     },
     async saveFile() {
-      this.fetchFile();
+      await this.fetchFile();
 
-      const el = document.createElement("a");
-      el.href = this.message.blob;
-      el.target = "_blank";
-      el.rel = "noreferrer noopener";
-      el.download = this.message.decryptedFileName;
-      el.click();
+      if (this.message.blob) {
+        const el = document.createElement("a");
+        el.href = this.message.blob;
+        el.target = "_blank";
+        el.rel = "noreferrer noopener";
+        el.download = this.message.decryptedFileName;
+        el.click();
+      }
     },
   },
   created() {
-    if (this.message.fileMediaType && !this.message.blob) {
+    if (this.message.fileMediaType && !this.message.expired) {
       this.fetchFile();
     }
   },
@@ -316,6 +327,7 @@ export default {
     DownloadIcon: () => import("../icons/Download"),
     ImageView: () => import("./ImageView"),
     LoadingIcon: () => import("../icons/Loading"),
+    LetterXIcon: () => import("../icons/LetterX"),
   },
 };
 </script>

@@ -2,28 +2,20 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { VueLoaderPlugin } = require("vue-loader");
 const TerserPlugin = require("terser-webpack-plugin");
-const { ProgressPlugin } = require("webpack");
+const { ProgressPlugin, DefinePlugin } = require("webpack");
 const CopyPlugin = require("copy-webpack-plugin");
-//const { GenerateSW } = require("workbox-webpack-plugin");
-const WorkboxPlugin = require('workbox-webpack-plugin');
+const { GenerateSW } = require("workbox-webpack-plugin");
+const proc = require("child_process");
 
 module.exports = {
   mode: "production",
-  entry: path.join(__dirname, "src/index.js"),
+  entry: path.resolve(__dirname, "src/index.js"),
   output: {
-    path: path.join(__dirname, "dist"),
+    path: path.resolve(__dirname, "dist"),
     filename: "[contenthash].js",
   },
   module: {
     rules: [
-      {
-        test: /\.js$/,
-        loader: "babel-loader",
-        exclude: [/node_modules/],
-        options: {
-          presets: ["@babel/preset-env"],
-        },
-      },
       {
         test: /\.vue$/,
         loader: "vue-loader",
@@ -40,7 +32,7 @@ module.exports = {
               postcssOptions: {
                 plugins: {
                   tailwindcss: {
-                    config: path.join(__dirname, "tailwind.config.js"),
+                    config: path.resolve(__dirname, "tailwind.config.js"),
                   },
                   "postcss-preset-env": {
                     stage: 0,
@@ -52,8 +44,7 @@ module.exports = {
         ],
       },
       {
-
-        test: /\.(webp|woff|woff2|ogg|wasm)$/,
+        test: /\.(webp|woff|woff2|ogg|wasm|png|webp)$/,
         use: {
           loader: "file-loader",
           options: {
@@ -65,44 +56,54 @@ module.exports = {
   },
   resolve: {
     extensions: [".js", ".vue"],
+    symlinks: false,
   },
   plugins: [
+    new ProgressPlugin(),
     new VueLoaderPlugin(),
     new HtmlWebpackPlugin({
-      title: 'Progressive Web Application',
-      template: path.join(__dirname, "src/index.html"),
+      title: 'Hyalus PWA',
+      template: path.resolve(__dirname, "src/index.html"),
       minify: true,
     }),
-    new ProgressPlugin(),
+    new GenerateSW({
+      exclude: ["/index.html"],
+    }),
     new CopyPlugin({
       patterns: [
         {
-          from: path.join(__dirname, "src/static"),
+          from: path.resolve(__dirname, "src/static"),
         },
       ],
     }),
-    new WorkboxPlugin.GenerateSW({
-      exclude: ["/index.html"],
+    new DefinePlugin({
+      _commit: JSON.stringify(
+        proc
+          .execSync("git rev-parse --short HEAD", {
+            cwd: path.resolve(__dirname, "../.."),
+          })
+          .toString()
+          .trim()
+      ),
     }),
   ],
   externals: ["path", "crypto", "os", "electron", "fs"],
   cache: {
     type: "filesystem",
-    buildDependencies: {
-      config: [__filename],
-    },
-  },
-  snapshot: {
-    managedPaths: [path.join(__dirname, "node_modules")],
   },
   optimization: {
     minimizer: [
       new TerserPlugin({
-        parallel: true,
         terserOptions: {
           compress: false,
         },
       }),
     ],
+    splitChunks: {
+      chunks: "all",
+      minSize: 0,
+      maxInitialRequests: Infinity,
+    },
+    runtimeChunk: true,
   },
 };

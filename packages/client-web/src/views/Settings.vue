@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full">
+  <div class="flex h-full w-full">
     <Sidebar />
     <div class="p-8">
       <ToggleSidebar v-bind:class="{
@@ -10,16 +10,14 @@
 
     <div class="flex-1 px-12 pt-16 overflow-auto">
       <p class="text-4xl font-bold mb-8">Settings</p>
+      <div class="divide-y divide-gray-800">
       <div class="flex items-center justify-between h-12">
         <div class="flex items-center">
           <p class="w-48 font-bold">Avatar</p>
           <UserAvatar class="w-8 h-8 rounded-full" :id="user.avatar" />
         </div>
-        <p class="cursor-pointer text-primary-500" @click="setAvatar">
-          Change
-        </p>
+        <p class="cursor-pointer text-primary-500" @click="setAvatar">Change</p>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <div class="flex">
           <p class="w-48 font-bold">Name</p>
@@ -29,7 +27,6 @@
           Change
         </p>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <div class="flex">
           <p class="w-48 font-bold">Username</p>
@@ -42,7 +39,6 @@
           Change
         </p>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <div class="flex">
           <p class="w-48 font-bold">Password</p>
@@ -57,47 +53,42 @@
           Change
         </p>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">2FA</p>
         <Toggle v-model="totpEnabled" />
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
+      <div class="flex items-center justify-between h-16">
+        <p class="font-bold">Sound Notifications</p>
+        <Toggle v-model="notifySound" />
+      </div>
+      <div class="flex items-center justify-between h-16">
+        <p class="font-bold">System Notifications</p>
+        <Toggle v-model="notifySystem" />
+      </div>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Send Typing Indicators</p>
         <Toggle v-model="sendTyping" />
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Adaptive Message Layout</p>
         <Toggle v-model="messageSides" />
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">RTC Echo Cancellation</p>
         <Toggle v-model="rtcEcho" />
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">RTC Noise Suppression</p>
         <Toggle v-model="rtcNoise" />
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">RTC Gain Control</p>
         <Toggle v-model="rtcGain" />
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Noise Cancellation</p>
         <Toggle v-model="vadEnabled" />
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
-      <div class="flex items-center justify-between h-12">
-        <p class="font-bold">Play Notification Sound</p>
-        <Toggle v-model="notifSound" />
-      </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Video Quality</p>
         <div class="flex flex-col">
@@ -127,7 +118,6 @@
           </div>
         </div>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Screenshare Quality</p>
         <div class="flex flex-col">
@@ -157,7 +147,6 @@
           </div>
         </div>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Speakers</p>
         <div class="flex flex-col">
@@ -190,7 +179,6 @@
           </div>
         </div>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Microphone</p>
         <div class="flex flex-col">
@@ -220,7 +208,6 @@
           </div>
         </div>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Webcam</p>
         <div class="flex flex-col">
@@ -250,7 +237,6 @@
           </div>
         </div>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">UI Color</p>
         <div class="flex flex-col">
@@ -259,7 +245,7 @@
             @click="accentColorMenu = !accentColorMenu"
           >
             <div class="flex items-center space-x-2">
-              <div class="p-2 rounded-full" :class="`bg-${accentColor}-500`" />
+              <div class="p-2 rounded-full" :class="`bg-primary-500`" />
               <p>
                 {{
                   `${accentColor.slice(0, 1).toUpperCase()}${accentColor.slice(
@@ -283,7 +269,25 @@
               >
                 <div
                   class="p-2 rounded-full"
-                  :class="`bg-${usableAccent}-500`"
+                  :class="{
+                    'bg-red-500': usableAccent === 'red',
+                    'bg-orange-500': usableAccent === 'orange',
+                    'bg-amber-500': usableAccent === 'amber',
+                    'bg-yellow-500': usableAccent === 'yellow',
+                    'bg-lime-500': usableAccent === 'lime',
+                    'bg-green-500': usableAccent === 'green',
+                    'bg-emerald-500': usableAccent === 'emerald',
+                    'bg-teal-500': usableAccent === 'teal',
+                    'bg-cyan-500': usableAccent === 'cyan',
+                    'bg-lightBlue-500': usableAccent === 'lightBlue',
+                    'bg-blue-500': usableAccent === 'blue',
+                    'bg-indigo-500': usableAccent === 'indigo',
+                    'bg-violet-500': usableAccent === 'violet',
+                    'bg-purple-500': usableAccent === 'purple',
+                    'bg-fuchsia-500': usableAccent === 'fuchsia',
+                    'bg-pink-500': usableAccent === 'pink',
+                    'bg-rose-500': usableAccent === 'rose',
+                  }"
                 />
                 <p>
                   {{
@@ -297,7 +301,6 @@
           </div>
         </div>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor"/>
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Code Syntax Theme</p>
         <div class="flex flex-col">
@@ -327,7 +330,6 @@
           </div>
         </div>
       </div>
-      <vsDivider class="flex items-center justify-between" :color="divColor" />
       <div class="flex items-center justify-between h-12">
         <p class="font-bold">Logout</p>
         <div @click="logout">
@@ -336,8 +338,16 @@
           />
         </div>
       </div>
-      <div class="pt-20"></div>
+      </div>
+      <!--icon and commit hash-->
+      <div class="flex flex-col items-center py-8 space-y-4">
+        <AppIcon class="w-12 h-12" />
+        <p class="text-sm text-gray-400">Hyalus ({{ commit }})</p>
+      </div>
     </div>
+
+
+    <!--popups-->
     <SetNameModal v-if="setNameModal" @close="setNameModal = false" />
     <SetUsernameModal
       v-if="setUsernameModal"
@@ -428,6 +438,7 @@ export default {
       })),
       syntaxThemeMenu: false,
       divColor:  "rgb(48, 48, 48)",
+      commit: _commit,
     };
   },
   computed: {
@@ -549,10 +560,26 @@ export default {
         (t) => t.id === this.$store.getters.syntaxTheme
       ).name;
     },
+    notifySound: {
+      get() {
+        return this.$store.getters.notifySound;
+      },
+      set(val) {
+        this.$store.commit("setNotifySound", val);
+      },
+    },
+    notifySystem: {
+      get() {
+        return this.$store.getters.notifySystem;
+      },
+      set(val) {
+        this.$store.commit("setNotifySystem", val);
+      },
+    },
   },
   methods: {
-    async logout() {
-      await this.$store.dispatch("logout");
+    logout() {
+      this.$store.dispatch("logout");
     },
     setAvatar() {
       this.$store.dispatch("setAvatar");
@@ -587,22 +614,25 @@ export default {
     },
   },
   async created() {
-    let audioStream;
-    let videoStream;
+    let stream;
+
+    try {
+      //needed to call enumerateDevices (permissions).
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true,
+      });
+    } catch {}
+
+    if (stream) {
+      stream.getTracks().map((a) => a.stop());
+    }
 
     const devices = (await navigator.mediaDevices.enumerateDevices()).filter(
       (d) =>
         !d.label.startsWith("Default -") &&
         !d.label.startsWith("Communications -")
     );
-
-    if (videoStream) {
-      videoStream.getTracks().map((a) => a.stop());
-    }
-
-    if (audioStream) {
-      audioStream.getTracks().map((a) => a.stop());
-    }
 
     this.audioOutputDevices = devices.filter((a) => a.kind === "audiooutput");
     this.audioInputDevices = devices.filter((a) => a.kind === "audioinput");
@@ -623,7 +653,6 @@ export default {
     this.$store.commit("setSidebarHidden", true);
   },
   components: {
-    Sidebar: () => import("../components/Sidebar"),
     UserAvatar: () => import("../components/UserAvatar"),
     Toggle: () => import("../components/Toggle"),
     SetNameModal: () => import("../components/SetNameModal"),
@@ -640,8 +669,8 @@ export default {
     ArrowDownIcon: () => import("../icons/ArrowDown"),
     LogoutIcon: () => import("../icons/Logout"),
     ToggleSidebar: () => import("../components/ToggleSidebar"),
-    vsDivider: () => import("../components/vsDivider"),
-
+    SettingsIcon: () => import("../icons/Settings"),
+    AppIcon: () => import("../icons/App"),
   },
 };
 </script>

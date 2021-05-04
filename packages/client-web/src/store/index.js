@@ -3,19 +3,19 @@ import Vuex from "vuex";
 import axios from "axios";
 import nacl from "libsodium-wrappers";
 import msgpack from "msgpack-lite";
+import MarkdownIt from "markdown-it";
+import MarkdownItEmoji from "markdown-it-emoji";
+import MarkdownItLinkAttr from "markdown-it-link-attributes";
+import hljs from "highlight.js";
+import router from "../router";
+import imgDefaultUser from "../images/user.webp";
 import sndNotification from "../sounds/notification_simple-01.ogg";
 import sndStateUp from "../sounds/state-change_confirm-up.ogg";
 import sndStateDown from "../sounds/state-change_confirm-down.ogg";
 import sndNavBackward from "../sounds/navigation_backward-selection.ogg";
 import sndNavForward from "../sounds/navigation_forward-selection.ogg";
-import router from "../router";
-import userImage from "../images/user.webp";
-import MarkdownIt from "markdown-it";
-import MarkdownItEmoji from "markdown-it-emoji";
-import MarkdownItLinkAttr from "markdown-it-link-attributes";
 import sndNavBackwardMin from "../sounds/navigation_backward-selection-minimal.ogg";
 import sndNavForwardMin from "../sounds/navigation_forward-selection-minimal.ogg";
-import hljs from "highlight.js";
 
 Vue.use(Vuex);
 
@@ -98,7 +98,69 @@ const videoTypes = [
   "video/quicktime",
 ];
 
-export default new Vuex.Store({
+const notify = async (opts) => {
+  if (store.getters.notifySound) {
+    try {
+      new Audio(sndNotification).play();
+    } catch {}
+  }
+
+  if (store.getters.notifySystem) {
+    let icon = opts.icon;
+
+    if (!icon) {
+      if (opts.avatar) {
+        const { data, headers } = await axios.get(
+          `/api/avatars/${opts.avatar}`,
+          {
+            responseType: "blob",
+          }
+        );
+
+        icon = URL.createObjectURL(data);
+
+        if (headers["content-type"].split("/")[0] === "video") {
+          const video = document.createElement("video");
+
+          video.addEventListener("loadedmetadata", () => {
+            video.currentTime = 0;
+          });
+
+          video.addEventListener("seeked", () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas
+              .getContext("2d")
+              .drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            notify({
+              ...opts,
+              icon: canvas.toDataURL(),
+            });
+          });
+
+          video.muted = true;
+          video.autoplay = true;
+          video.src = icon;
+          return;
+        }
+      } else {
+        icon = imgDefaultUser;
+      }
+    }
+
+    try {
+      new Notification(opts.title, {
+        icon,
+        silent: true,
+        body: opts.body,
+      });
+    } catch {}
+  }
+};
+
+const store = new Vuex.Store({
   state: {
     user: null,
     salt: null,
@@ -131,7 +193,8 @@ export default new Vuex.Store({
     syntaxTheme: localStorage.syntaxTheme,
     invite: null,
     sidebarHidden: false,
-    notifSound: localStorage.notifSound,
+    notifySound: localStorage.notifySound,
+    notifySystem: localStorage.notifySystem,
   },
   getters: {
     config: (state) => state.config,
@@ -178,7 +241,8 @@ export default new Vuex.Store({
     syntaxTheme: (state) => state.syntaxTheme || "tomorrow-night",
     invite: (state) => state.invite,
     sidebarHidden: (state) => state.sidebarHidden,
-    notifSound: (state) => !state.notifSound,
+    notifySound: (state) => !state.notifySound,
+    notifySystem: (state) => !state.notifySystem,
   },
   mutations: {
     setUser(state, user) {
@@ -284,8 +348,9 @@ export default new Vuex.Store({
       }
     },
     setFriend(state, friend) {
+      const old = state.friends.find((f) => f.id === friend.id);
       const merged = {
-        ...state.friends.find((f) => f.id === friend.id),
+        ...old,
         ...friend,
       };
 
@@ -295,25 +360,19 @@ export default new Vuex.Store({
         state.friends.push(merged);
 
         if (state.ready && merged.acceptable) {
-          try {
-            new Audio(sndNotification).play();
-          } catch {}
+          notify({
+            title: merged.user.name,
+            avatar: merged.user.avatar,
+            body: "Sent you a friend request",
+          });
+        }
 
-          if (typeof process === "undefined") {
-            let icon;
-
-            if (merged.user.avatar === "default") {
-              icon = userImage;
-            } else {
-              icon = `${state.baseUrl}/api/avatars/${merged.user.avatar}`;
-            }
-
-            new Notification(merged.user.name, {
-              icon,
-              silent: true,
-              body: "Sent you a friend request",
-            });
-          }
+        if (state.ready && merged.accepted && old && !old.acceptable) {
+          notify({
+            title: merged.user.name,
+            avatar: merged.user.avatar,
+            body: "Accepted your friend request",
+          });
         }
       }
     },
@@ -339,6 +398,10 @@ export default new Vuex.Store({
 
         if (!merged.lastMessage) {
           merged.lastMessage = null; //forces Vue to update it for computed props.
+        }
+
+        if (typeof merged.created === "string") {
+          merged.created = new Date(merged.created);
         }
 
         state.channels.push(merged);
@@ -401,6 +464,10 @@ export default new Vuex.Store({
             merged.fileType,
             nacl.base64_variants.ORIGINAL
           );
+        }
+
+        if (typeof merged.time === "string") {
+          merged.time = new Date(merged.time);
         }
 
         if (merged.key && !merged.decryptedKey) {
@@ -524,39 +591,26 @@ export default new Vuex.Store({
             }
           }
 
-          if (!merged.decrypted || state.notifSound) {
+          if (!merged.decrypted || state.notifySound) {
             playSound = false;
           }
 
           if (playSound) {
-            try {
-              new Audio(sndNotification).play();
-            } catch {}
+            let title = "";
 
-            if (typeof process !== "undefined") {
-              let icon;
-              let title;
-
-              if (sender.avatar === "default") {
-                icon = userImage;
-              } else {
-                icon = `${state.baseUrl}/api/avatars/${sender.avatar}`;
-              }
-
-              if (channel.type === "dm") {
-                title = sender.name;
-              }
-
-              if (channel.type === "group") {
-                title = `${sender.name} (${channel.name})`;
-              }
-
-              new Notification(title, {
-                icon,
-                silent: true,
-                body: merged.decrypted,
-              });
+            if (channel.type === "dm") {
+              title = sender.name;
             }
+
+            if (channel.type === "group") {
+              title = `${sender.name} (${channel.name})`;
+            }
+
+            notify({
+              title,
+              avatar: sender.avatar,
+              body: merged.decrypted,
+            });
           }
         }
       } else {
@@ -734,14 +788,9 @@ export default new Vuex.Store({
         localStorage.setItem("vadEnabled", "a");
       }
     },
+    // deprecated, please use setNotifySound
     setNotifSound(state, val) {
-      state.notifSound = !val;
-
-      if (val) {
-        localStorage.removeItem("notifSound");
-      } else {
-        localStorage.setItem("notifSound", "a");
-      }
+      return setNotifySound(state, val)
     },
     setMessageSides(state, val) {
       state.messageSides = val;
@@ -797,6 +846,24 @@ export default new Vuex.Store({
           ...friend.user,
           ...foreignUser,
         };
+      }
+    },
+    setNotifySound(state, val) {
+      state.notifySound = !val;
+
+      if (val) {
+        localStorage.removeItem("notifySound");
+      } else {
+        localStorage.setItem("notifySound", "a");
+      }
+    },
+    setNotifySystem(state, val) {
+      state.notifySystem = !val;
+
+      if (val) {
+        localStorage.removeItem("notifySystem");
+      } else {
+        localStorage.setItem("notifySystem", "a");
       }
     },
   },
@@ -994,11 +1061,10 @@ export default new Vuex.Store({
         dispatch("wsConnect");
       }
     },
-    async logout({ dispatch }) {
+    async logout() {
       await axios.get("/api/logout");
-      dispatch("reset");
     },
-    async reset({ getters, commit, dispatch }) {
+    async reset({ commit, dispatch }) {
       await dispatch("voiceLeave");
 
       commit("setWs", null);
@@ -1019,6 +1085,10 @@ export default new Vuex.Store({
       ws._send = ws.send;
       ws.send = (data) => {
         if (ws.readyState === WebSocket.OPEN) {
+          if (data.t !== "pong") {
+            log.debug("socket/tx", "%o", data);
+          }
+
           ws._send(msgpack.encode(data));
         }
       };
@@ -1041,8 +1111,8 @@ export default new Vuex.Store({
       ws.onmessage = async ({ data }) => {
         data = msgpack.decode(new Uint8Array(data));
 
-        if (Vue.config.devtools && data.t !== "ping") {
-          console.log(data);
+        if (data.t !== "ping") {
+          log.debug("socket/rx", "%o", data);
         }
 
         if (data.t === "ping") {
@@ -1061,9 +1131,7 @@ export default new Vuex.Store({
           commit("resetUser");
           commit("resetFriends");
           commit("resetChannels");
-
           commit("setUser", data.d.user);
-
           dispatch("updateFavicon");
 
           data.d.friends.map((friend) => {
@@ -1651,9 +1719,10 @@ export default new Vuex.Store({
       };
 
       peer.onconnectionstatechange = () => {
-        if (Vue.config.devtools) {
-          console.log(`${data.user} -> ${data.type}: ${peer.connectionState}`);
-        }
+        log.debug(
+          "voice",
+          `${data.user} -> ${data.type}: ${peer.connectionState}`
+        );
 
         if (peer.connectionState === "closed") {
           commit("setRemoteStream", {
@@ -1931,9 +2000,10 @@ export default new Vuex.Store({
       };
 
       peer.onconnectionstatechange = async () => {
-        if (Vue.config.devtools) {
-          console.log(`${data.type} -> ${data.user}: ${peer.connectionState}`);
-        }
+        log.debug(
+          "voice",
+          `${data.type} -> ${data.user}: ${peer.connectionState}`
+        );
 
         if (peer.connectionState === "disconnected") {
           peer.restartIce();
@@ -2081,6 +2151,7 @@ export default new Vuex.Store({
           ]);
 
           let i = 0;
+          let results = [];
 
           for (; i + sampleLength < bufIn.length; i += sampleLength) {
             const sample = bufIn.slice(i, i + sampleLength);
@@ -2091,16 +2162,14 @@ export default new Vuex.Store({
 
             rnnoise.HEAPF32.set(sample, inMemp / 4);
 
-            const out = rnnoise._rnnoise_process_frame(noise, outMemp, inMemp);
-
-            if (out > 0.4) {
-              detected = true;
-            }
+            results.push(
+              rnnoise._rnnoise_process_frame(noise, outMemp, inMemp)
+            );
           }
 
           pendingIn = bufIn.slice(i);
 
-          if (detected) {
+          if (results.reduce((a, b) => a + b) / results.length > 0.3) {
             if (closeTimeout) {
               clearTimeout(closeTimeout);
             }
@@ -2109,7 +2178,7 @@ export default new Vuex.Store({
 
             closeTimeout = setTimeout(() => {
               gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
-            }, 100);
+            }, 200);
           }
         });
 
@@ -2156,10 +2225,10 @@ export default new Vuex.Store({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           height: {
-            max: Number(height),
+            ideal: Number(height),
           },
           frameRate: {
-            max: Number(fps),
+            ideal: Number(fps),
           },
           deviceId: getters.videoInput,
         },
@@ -2241,10 +2310,10 @@ export default new Vuex.Store({
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: {
             height: {
-              max: Number(height),
+              ideal: Number(height),
             },
             frameRate: {
-              max: Number(fps),
+              ideal: Number(fps),
             },
           },
           audio: true,
@@ -2277,7 +2346,9 @@ export default new Vuex.Store({
       await axios.post("/api/me", { accentColor });
     },
     async updateFavicon({ getters, commit }) {
-      const icon = await import(`../images/icon-${getters.accentColor}.webp`);
+      const icon = await import(
+        `../images/icon-standalone-${getters.accentColor}.png`
+      );
       commit("setFavicon", icon.default);
     },
     async leaveChannel({}, id) {
@@ -2412,13 +2483,24 @@ export default new Vuex.Store({
     },
     async fetchFile({ getters, commit, dispatch }, message) {
       const channel = getters.channelById(message.channel);
+      let body;
 
-      const { data: body } = await axios.get(
-        `/api/channels/${channel.id}/files/${message.body}`,
-        {
-          responseType: "arraybuffer",
-        }
-      );
+      try {
+        const { data } = await axios.get(
+          `/api/channels/${channel.id}/files/${message.body}`,
+          {
+            responseType: "arraybuffer",
+          }
+        );
+
+        body = data;
+      } catch (e) {
+        return commit("setMessage", {
+          ...message,
+          silent: true,
+          expired: true,
+        });
+      }
 
       const encrypted = new Uint8Array(body);
 
@@ -2433,10 +2515,10 @@ export default new Vuex.Store({
       });
 
       commit("setMessage", {
-        id: message.id,
-        channel: message.channel,
-        blob: URL.createObjectURL(blob),
+        ...message,
         silent: true,
+        preview: true,
+        blob: URL.createObjectURL(blob),
       });
     },
     async restartLocalStream({ getters, commit, dispatch }, type) {
@@ -2502,3 +2584,5 @@ export default new Vuex.Store({
     },
   },
 });
+
+export default store;

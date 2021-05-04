@@ -1,8 +1,7 @@
 <template>
-  <div class="flex h-full">
-    <Sidebar />
+  <div class="flex-1 flex">
     <div class="flex-1 flex flex-col items-center justify-center space-y-6">
-      <AppIcon class="w-32 h-32 filter grayscale opacity-10" v-if="noTips" />
+      <AppIcon class="w-24 h-24 filter grayscale opacity-10" v-if="noTips" />
       <div
         class="bg-gray-850 rounded-md border border-gray-800 p-6 flex items-center space-x-8 max-w-lg w-full"
         v-if="showDesktopAppCard"
@@ -59,7 +58,7 @@
         v-if="showFriendsCard"
       >
         <FriendsIcon
-          class="w-24 h-24 rounded-full bg-gray-750 text-gray-400 p-6 flex-shrink-0"
+          class="w-24 h-24 rounded-full bg-gray-750 text-gray-300 p-6 flex-shrink-0"
         />
         <div class="flex flex-col items-start">
           <p class="text-2xl font-bold">Add your friends</p>
@@ -95,7 +94,7 @@ export default {
       return this.$store.getters.user;
     },
     showAvatarCard() {
-      return this.$store.getters.user.avatar === "default";
+      return !this.$store.getters.user.avatar;
     },
     showDesktopAppCard() {
       return typeof process === "undefined";
@@ -118,8 +117,12 @@ export default {
 
     this.$store.commit("setSidebarHidden", false);
   },
+  async mounted() {
+    try {
+      Notification.requestPermission();
+    } catch {}
+  },
   components: {
-    Sidebar: () => import("../components/Sidebar"),
     AppIcon: () => import("../icons/App"),
     UserAvatar: () => import("../components/UserAvatar"),
     AppDownloadModal: () => import("../components/AppDownloadModal"),

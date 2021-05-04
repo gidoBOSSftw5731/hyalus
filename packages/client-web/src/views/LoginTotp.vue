@@ -1,9 +1,9 @@
 <template>
-  <div class="flex items-center justify-center h-full">
+  <div class="flex-1 flex items-center justify-center h-full">
     <div
       class="flex flex-col w-full max-w-sm border rounded-md bg-gray-850 border-gray-750"
     >
-      <div class="p-8 border-b border-gray-750">
+      <div class="p-8 border-b border-gray-750 space-y-4">
         <AppIcon class="w-16 h-16" />
         <p class="mt-6 text-3xl font-bold">2FA Verification</p>
       </div>

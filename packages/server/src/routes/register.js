@@ -62,10 +62,10 @@ app.post(
           req.body.encryptedPrivateKey,
           "base64"
         ),
-        avatar: "default",
+        avatar: null,
         accentColor: "green",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
         totpSecret: null,
         active: true,
       })
@@ -77,8 +77,8 @@ app.post(
         token: crypto.randomBytes(32),
         ipAddr: req.ip,
         userAgent: req.headers["user-agent"],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
         active: true,
       })
     ).ops[0];

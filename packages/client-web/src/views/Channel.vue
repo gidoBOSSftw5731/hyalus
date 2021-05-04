@@ -1,142 +1,131 @@
 <template>
-  <div class="flex h-full">
-    <Sidebar />
+  <div
+    class="flex flex-col flex-1 min-h-0 overflow-auto"
+    v-if="channel"
+    @paste="processFiles($event.clipboardData)"
+    @drop.prevent="processFiles($event.dataTransfer)"
+    @dragover.prevent
+    @dragstart.prevent
+    @dragsend.prevent
+  >
     <div
-      class="flex flex-col flex-1 min-h-0 overflow-auto"
-      v-if="channel"
-      @paste="processFiles($event.clipboardData)"
-      @drop.prevent="processFiles($event.dataTransfer)"
-      @dragover.prevent
-      @dragstart.prevent
-      @dragsend.prevent
+      class="flex items-center justify-between px-2 py-4 border-b border-gray-800 min-w-0 space-x-2"
     >
-      <div
-        class="flex items-center justify-between px-2 py-4 border-b border-gray-800 min-w-0 space-x-2"
-      >
-      <div :class="{ 'cursor-pointer': channel.admin }" @click="setAvatar">
-        <div class="flex items-center space-x-4">
-          <ToggleSidebar v-bind:class="{
-          'hidden': this.$store.getters.showSidebar
-          }"
-          class="w-8 h-8 p-2 transition rounded-full hover:bg-gray-650 bg-gray-750 text-gray-400"/>
-            <UserAvatar
-              class="w-12 h-12 rounded-full"
-              :id="avatar"
-              v-if="avatar"
-            />
-            <div
-              class="flex items-center justify-center w-12 h-12 text-xl font-bold bg-primary-500 text-white rounded-full"
-              v-else
-            >
-              {{ name.slice(0, 1).toUpperCase() }}
+          <div :class="{ 'cursor-pointer': channel.admin }" @click="setAvatar">
+            <div class="flex items-center space-x-4">
+              <ToggleSidebar v-bind:class="{
+                'hidden': this.$store.getters.showSidebar
+                }" class="w-8 h-8 p-2 transition rounded-full hover:bg-gray-650 bg-gray-750 text-gray-400" />
+                <div>
+              <UserAvatar class="w-12 h-12 rounded-full" :id="avatar" v-if="avatar" />
+              <div
+                class="flex items-center justify-center w-12 h-12 text-xl font-bold bg-primary-500 text-white rounded-full"
+                v-else>
+                {{ name.slice(0, 1).toUpperCase() }}
+              </div>
             </div>
-          </div>
-          <div class="min-w-0">
-            <p
-              class="font-bold truncate"
-              :class="{ 'cursor-pointer': channel.admin }"
-              @click="setName"
-            >
-              {{ name }}
-            </p>
-            <p class="text-xs text-gray-400">{{ description }}</p>
-          </div>
-        </div>
-        <div class="flex items-center space-x-2 text-gray-400">
-          <div class="flex mr-2 -space-x-2" v-if="voiceUsers.length">
-            <UserAvatar
-              class="border border-gray-900 rounded-full w-7 h-7"
-              v-for="user in voiceUsersShown"
-              v-bind:key="user.id"
-              :id="user.avatar"
-            />
-            <div
-              class="flex items-center justify-center text-xs font-bold text-white border border-gray-900 rounded-full bg-primary-500 w-7 h-7"
-              v-if="voiceUsers.length !== voiceUsersShown.length"
-            >
-              <p>+{{ voiceUsers.length - voiceUsersShown.length }}</p>
+              <div class="min-w-0">
+                <p class="font-bold truncate" :class="{ 'cursor-pointer': channel.admin }" @click="setName">
+                  {{ name }}
+                </p>
+                <p class="text-xs text-gray-400">{{ description }}</p>
+              </div>
             </div>
-          </div>
-          <div @click="voiceJoin(false)">
-            <PhoneIcon
-              class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-            />
-          </div>
-          <div @click="showInfo = !showInfo">
-            <DotsIcon
-              class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-            />
-          </div>
-        </div>
-      </div>
-      <p class="px-4 py-2 text-sm bg-gray-800" v-if="!channel.writable">
-        You can't send messages in this channel.
-      </p>
-      <div class="flex flex-1 min-h-0 relative">
-        <div class="absolute p-2 z-10 w-full" v-if="typingStatus">
+         </div>
+      <div class="flex items-center space-x-2 text-gray-400">
+        <div class="flex mr-2 -space-x-2" v-if="voiceUsers.length">
+          <UserAvatar
+            class="border border-gray-900 rounded-full w-7 h-7"
+            v-for="user in voiceUsersShown"
+            v-bind:key="user.id"
+            :id="user.avatar"
+          />
           <div
-            :class="{
-              'pr-80': showInfo,
-            }"
+            class="flex items-center justify-center text-xs font-bold text-white border border-gray-900 rounded-full bg-primary-500 w-7 h-7"
+            v-if="voiceUsers.length !== voiceUsersShown.length"
           >
-            <div
-              class="px-4 py-2 text-sm bg-gray-800 rounded-md border border-gray-750 flex items-center space-x-4 shadow-lg w-full"
-            >
-              <PencilIcon class="w-4 h-4 text-gray-400" />
-              <p>{{ typingStatus }}</p>
-            </div>
+            <p>+{{ voiceUsers.length - voiceUsersShown.length }}</p>
           </div>
         </div>
-        <div
-          class="flex flex-col flex-1 p-3 space-y-1 overflow-auto"
-          @scroll="messagesScroll"
-          ref="messageList"
-        >
-          <ChannelMessage
-            v-for="message in channel.messages"
-            v-bind:key="message.id"
-            :message="message"
+        <div @click="voiceJoin(false)">
+          <PhoneIcon
+            class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
           />
         </div>
-        <ChannelInfo
-          class="absolute top-0 right-0"
-          v-if="showInfo"
-          :channel="channel"
-          @close="showInfo = false"
-        />
+        <div @click="showInfo = !showInfo">
+          <DotsIcon
+            class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
+          />
+        </div>
       </div>
-      <div
-        class="flex items-center px-4 py-3 space-x-4 border-t border-gray-800"
-        v-if="channel.writable"
-      >
-        <textarea
-          rows="1"
-          placeholder="Send a message"
-          class="flex-1 bg-transparent border-transparent outline-none resize-none max-h-32 focus:border-transparent"
-          v-model="message"
-          @input="messageInput"
-          @keydown="messageKeydown"
-          ref="messageInput"
-        />
-        <div class="flex space-x-2 text-gray-400">
-          <div @click="attachFile">
-            <PaperclipIcon
-              class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-            />
-          </div>
-          <div @click="sendMessage">
-            <AirplaneIcon
-              class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
-            />
+    </div>
+    <p class="px-4 py-2 text-sm bg-gray-800" v-if="!channel.writable">
+      You can't send messages in this channel.
+    </p>
+    <div class="flex flex-1 min-h-0 relative">
+      <div class="absolute p-2 z-10 w-full" v-if="typingStatus">
+        <div
+          :class="{
+            'pr-80': showInfo,
+          }"
+        >
+          <div
+            class="px-4 py-2 text-sm bg-gray-800 rounded-md border border-gray-750 flex items-center space-x-4 shadow-lg w-full"
+          >
+            <PencilIcon class="w-4 h-4 text-gray-400" />
+            <p>{{ typingStatus }}</p>
           </div>
         </div>
       </div>
-      <GroupNameModal
-        v-if="groupNameModal"
-        @close="groupNameModal = false"
+      <div
+        class="flex flex-col flex-1 p-3 space-y-1 overflow-auto"
+        @scroll="messagesScroll"
+        ref="messageList"
+      >
+        <ChannelMessage
+          v-for="message in channel.messages"
+          v-bind:key="message.id"
+          :message="message"
+        />
+      </div>
+      <ChannelInfo
+        class="absolute top-0 right-0"
+        v-if="showInfo"
         :channel="channel"
+        @close="showInfo = false"
       />
     </div>
+    <div
+      class="flex items-center px-4 py-3 space-x-4 border-t border-gray-800"
+      v-if="channel.writable"
+    >
+      <textarea
+        rows="1"
+        placeholder="Send a message"
+        class="flex-1 bg-transparent border-transparent outline-none resize-none max-h-32 focus:border-transparent"
+        v-model="message"
+        @input="messageInput"
+        @keydown="messageKeydown"
+        ref="messageInput"
+      />
+      <div class="flex space-x-2 text-gray-400">
+        <div @click="attachFile">
+          <PaperclipIcon
+            class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
+          />
+        </div>
+        <div @click="sendMessage">
+          <AirplaneIcon
+            class="w-8 h-8 p-2 transition bg-gray-800 rounded-full cursor-pointer hover:bg-gray-700"
+          />
+        </div>
+      </div>
+    </div>
+    <GroupNameModal
+      v-if="groupNameModal"
+      @close="groupNameModal = false"
+      :channel="channel"
+    />
   </div>
 </template>
 
@@ -204,6 +193,7 @@ export default {
     messageInput() {
       const { messageInput } = this.$refs;
 
+      messageInput.focus();
       messageInput.style.height = "auto";
       messageInput.style.height = `${messageInput.scrollHeight}px`;
 
@@ -223,6 +213,8 @@ export default {
       }
     },
     async sendMessage() {
+      this.lastScrollBottom = true;
+
       const _message = this.message.trim();
       this.message = "";
       setTimeout(() => this.messageInput(), 1);
@@ -366,10 +358,12 @@ export default {
     },
   },
   created() {
+    this.$store.commit("setSidebarHidden", true);
+  },
+  mounted() {
     this.update();
     this.scrollInterval = setInterval(this.updateScroll, 100);
     this.typingStatusInterval = setInterval(this.updateTypingStatus, 100);
-    this.$store.commit("setSidebarHidden", true);
   },
   beforeDestroy() {
     document.title = "Hyalus";
@@ -383,7 +377,6 @@ export default {
   },
   components: {
     UserAvatar: () => import("../components/UserAvatar"),
-    Sidebar: () => import("../components/Sidebar"),
     PhoneIcon: () => import("../icons/Phone"),
     UserAddIcon: () => import("../icons/UserAdd"),
     DotsIcon: () => import("../icons/Dots"),

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="flex-1">
     <Navbar />
     <div class="flex flex-col items-center w-full py-20">
       <AppIcon class="w-32 h-32" />

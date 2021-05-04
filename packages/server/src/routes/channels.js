@@ -6,9 +6,11 @@ const Joi = require("joi");
 const app = express.Router();
 const { ObjectId } = require("mongodb");
 const Busboy = require("busboy");
-const sharp = require("sharp");
 const crypto = require("crypto");
 const ratelimit = require("../middleware/ratelimit");
+const fs = require("fs");
+const os = require("os");
+const proc = require("child_process");
 
 app.post(
   "/",
@@ -76,14 +78,14 @@ app.post(
         type: "group",
         name: req.body.name,
         avatar: null,
-        created: Date.now(),
+        created: new Date(),
         writable: true,
         users: users.map((u) => {
           return {
             id: u._id,
             admin: u === req.user,
             removed: false,
-            added: Date.now(),
+            added: new Date(),
           };
         }),
       })
@@ -106,7 +108,7 @@ app.post(
               return {
                 id: u._id.toString(),
                 name: u.name,
-                avatar: u.avatar.toString(),
+                avatar: u.avatar?.toString(),
                 username: u.username,
                 publicKey: u.publicKey.toString("base64"),
               };
@@ -119,7 +121,7 @@ app.post(
       const message = (
         await req.deps.db.collection("messages").insertOne({
           channel: channel._id,
-          time: Date.now(),
+          time: new Date(),
           sender: req.session.user,
           type: "channelUserAdd",
           body: user._id,
@@ -224,7 +226,7 @@ app.post(
         await req.deps.db.collection("messages").insertOne({
           channel: channel._id,
           sender: req.session.user,
-          time: Date.now(),
+          time: new Date(),
           type: "channelName",
           body: req.body.name,
           keys: null,
@@ -449,7 +451,7 @@ app.post(
 
     const message = (
       await req.deps.db.collection("messages").insertOne({
-        time: Date.now(),
+        time: new Date(),
         channel: channel._id,
         type: "text",
         sender: req.session.user,
@@ -552,7 +554,7 @@ app.delete(
       });
     }
 
-    res.status(204).end();
+    res.end();
   }
 );
 
@@ -621,86 +623,187 @@ app.post(
       file.on("end", async () => {
         const data = Buffer.concat(bufs);
 
-        if (data.length > 1024 * 1024 * 5) {
+        if (data.length > 1024 * 1024 * 10) {
           res.status(400).json({
-            error: "Avatar too large (5MB max)",
+            error: "Avatar too large (10MB max)",
           });
         }
 
-        let img;
+        const tmp = fs.mkdtempSync(`${os.tmpdir()}/`);
+        fs.writeFileSync(`${tmp}/input.dat`, data);
 
         try {
-          img = await sharp(Buffer.concat(bufs))
-            .resize(256, 256)
-            .toFormat("webp", {
-              quality: 80,
-            })
-            .toBuffer();
-        } catch {
-          res.status(400).json({
-            error: "Unsupported or invalid image data",
+          const probed = JSON.parse(
+            proc
+              .execSync(
+                [
+                  "ffprobe",
+                  `-i ${tmp}/input.dat`,
+                  "-of json",
+                  "-show_format",
+                  "-show_streams",
+                  "-v quiet",
+                ].join(" "),
+                {
+                  timeout: 1000 * 10, //15s
+                }
+              )
+              .toString()
+          );
+
+          let type;
+          let cropWidth;
+          let cropX = 0;
+          let cropY = 0;
+
+          if (probed.streams[0].width > probed.streams[0].height) {
+            cropWidth = probed.streams[0].height;
+            cropX = (probed.streams[0].width - cropWidth) / 2;
+            cropY = 0;
+          } else {
+            cropWidth = probed.streams[0].width;
+            cropX = 0;
+            cropY = (probed.streams[0].height - cropWidth) / 2;
+          }
+
+          //image has more than 1 frame.
+          if (probed.streams[0].nb_frames === "N/A") {
+            type = "image/webp";
+
+            proc.execSync(
+              [
+                "ffmpeg",
+                `-f ${probed.format.format_name}`,
+                `-i ${tmp}/input.dat`,
+                "-c:v libwebp",
+                "-qscale 80",
+                "-pix_fmt yuv420p",
+                "-frames:v 1",
+                `-vf crop=${cropWidth}:${cropWidth}:${cropX}:${cropY},scale=256:256`,
+                `-f webp`,
+                `-y ${tmp}/output.dat`,
+              ].join(" "),
+              {
+                stdio: "ignore",
+                timeout: 1000 * 60, //1m
+              }
+            );
+          } else {
+            type = "video/mp4";
+
+            let filters = [
+              `[0]crop=${cropWidth}:${cropWidth}:${cropX}:${cropY}[fg]`,
+              "[fg]scale=256:256[fg]",
+              ...(probed.streams[0].nb_frames / probed.streams[0].duration > 30 //fps>30 effectively.
+                ? [`[fg]fps=30[fg]`]
+                : []),
+              ,
+              "[1]scale=256:256[bg]",
+              "[bg]setsar=1[bg]",
+              "[bg][fg]overlay=shortest=1",
+            ].filter((i) => i); //remove any empty items.
+
+            proc.execSync(
+              [
+                "ffmpeg",
+                `-f ${probed.format.format_name}`,
+                `-i ${tmp}/input.dat`,
+                "-f lavfi",
+                "-i color=202023",
+                `-filter_complex '${filters.join(",")}'`,
+                "-an",
+                "-c:v libx264",
+                "-crf 30",
+                "-preset veryfast",
+                "-profile:v high",
+                "-pix_fmt yuv420p",
+                `-f mp4`,
+                `-y ${tmp}/output.dat`,
+              ].join(" "),
+              {
+                stdio: "ignore",
+                timeout: 1000 * 60, //1m
+              }
+            );
+          }
+
+          const data = fs.readFileSync(`${tmp}/output.dat`);
+          const hash = crypto
+            .createHash("sha256")
+            .update(data)
+            .digest();
+
+          let avatar = await req.deps.db.collection("avatars").findOne({
+            hash,
           });
 
-          return;
-        }
+          if (!avatar) {
+            avatar = (
+              await req.deps.db.collection("avatars").insertOne({
+                hash,
+                data,
+                type,
+              })
+            ).ops[0];
+          }
 
-        const hash = crypto
-          .createHash("sha256")
-          .update(img)
-          .digest();
+          await req.deps.db.collection("channels").updateOne(channel, {
+            $set: {
+              avatar: avatar._id,
+            },
+          });
 
-        let avatar = await req.deps.db.collection("avatars").findOne({
-          hash,
-        });
+          if (
+            !(await req.deps.db.collection("users").findOne({
+              avatar: channel.avatar,
+            })) &&
+            !(await req.deps.db.collection("channels").findOne({
+              avatar: channel.avatar,
+            }))
+          ) {
+            await req.deps.db.collection("avatars").deleteOne({
+              _id: channel.avatar,
+            });
+          }
 
-        if (!avatar) {
-          avatar = (
-            await req.deps.db.collection("avatars").insertOne({
-              hash,
-              img,
+          const message = (
+            await req.deps.db.collection("messages").insertOne({
+              channel: channel._id,
+              sender: req.session.user,
+              time: new Date(),
+              type: "channelAvatar",
+              body: null,
+              keys: null,
             })
           ).ops[0];
-        }
 
-        await req.deps.db.collection("channels").updateOne(channel, {
-          $set: {
-            avatar: avatar._id,
-          },
-        });
+          for (const user of channel.users.filter((u) => !u.removed)) {
+            req.deps.redis.publish(`user:${user.id}`, {
+              t: "channel",
+              d: {
+                id: channel._id.toString(),
+                avatar: avatar._id.toString(),
+              },
+            });
 
-        const message = (
-          await req.deps.db.collection("messages").insertOne({
-            channel: channel._id,
-            sender: req.session.user,
-            time: Date.now(),
-            type: "channelAvatar",
-            body: null,
-            keys: null,
-          })
-        ).ops[0];
+            req.deps.redis.publish(`user:${user.id}`, {
+              t: "message",
+              d: {
+                channel: channel._id.toString(),
+                id: message._id.toString(),
+                sender: message.sender.toString(),
+                time: message.time,
+                type: message.type,
+              },
+            });
+          }
 
-        for (const user of channel.users.filter((u) => !u.removed)) {
-          req.deps.redis.publish(`user:${user.id}`, {
-            t: "channel",
-            d: {
-              id: channel._id.toString(),
-              avatar: avatar._id.toString(),
-            },
-          });
-
-          req.deps.redis.publish(`user:${user.id}`, {
-            t: "message",
-            d: {
-              channel: channel._id.toString(),
-              id: message._id.toString(),
-              sender: message.sender.toString(),
-              time: message.time,
-              type: message.type,
-            },
+          res.end();
+        } catch (e) {
+          res.status(400).json({
+            error: "Invalid or unsupported image format",
           });
         }
-
-        res.end();
       });
     });
 
@@ -835,7 +938,7 @@ app.post(
             id: targetUser._id,
             admin: false,
             removed: false,
-            added: Date.now(),
+            added: new Date(),
           },
         },
       });
@@ -847,7 +950,7 @@ app.post(
             channel: channel._id.toString(),
             id: targetUser._id.toString(),
             name: targetUser.name,
-            avatar: targetUser.avatar.toString(),
+            avatar: targetUser.avatar?.toString(),
             username: targetUser.username,
             publicKey: targetUser.publicKey.toString("base64"),
             removed: false,
@@ -866,7 +969,7 @@ app.post(
       users.push({
         id: user._id.toString(),
         name: user.name,
-        avatar: user.avatar.toString(),
+        avatar: user.avatar?.toString(),
         username: user.username,
         publicKey: user.publicKey.toString("base64"),
         removed: meta.removed,
@@ -879,7 +982,7 @@ app.post(
         id: channel._id.toString(),
         type: channel.type,
         name: channel.name,
-        avatar: channel.avatar && channel.avatar.toString(),
+        avatar: channel.avatar && channel.avatar?.toString(),
         writable: channel.writable,
         users: users.filter((u) => u.id !== req.body.user),
       },
@@ -888,7 +991,7 @@ app.post(
     const message = (
       await req.deps.db.collection("messages").insertOne({
         channel: channel._id,
-        time: Date.now(),
+        time: new Date(),
         sender: req.session.user,
         type: "channelUserAdd",
         body: new ObjectId(req.body.user),
@@ -1012,7 +1115,7 @@ app.delete(
     const message = (
       await req.deps.db.collection("messages").insertOne({
         channel: channel._id,
-        time: Date.now(),
+        time: new Date(),
         type: "channelUserRemove",
         sender: req.session.user,
         body: new ObjectId(req.params.user),
@@ -1059,7 +1162,7 @@ app.delete(
       },
     });
 
-    res.status(204).end();
+    res.end();
   }
 );
 
@@ -1141,7 +1244,7 @@ app.post(
           channel: channel._id,
           sender: req.session.user,
           type: "channelUserLeave",
-          time: Date.now(),
+          time: new Date(),
           body: null,
           keys: null,
         })
@@ -1181,7 +1284,7 @@ app.post(
       },
     });
 
-    res.status(204).end();
+    res.end();
   }
 );
 
@@ -1280,7 +1383,7 @@ app.post(
 
     const file = (
       await req.deps.db.collection("files").insertOne({
-        time: Date.now(),
+        time: new Date(),
         body: Buffer.from(req.body.body, "base64"),
         channel: channel._id,
       })
@@ -1288,7 +1391,7 @@ app.post(
 
     const message = (
       await req.deps.db.collection("messages").insertOne({
-        time: Date.now(),
+        time: new Date(),
         channel: channel._id,
         type: "file",
         sender: req.session.user,
@@ -1329,14 +1432,14 @@ app.get(
     scope: "user",
     tag: "getFile",
     max: 100,
-    time: 60 * 5,
+    time: 60 * 2,
   }),
   ratelimit({
     scope: "user",
     tag: "getFile",
-    max: 5,
+    max: 10,
     time: 60,
-    params: true,
+    params: true, //will count per-file.
   }),
   async (req, res) => {
     if (!ObjectId.isValid(req.params.channel)) {
@@ -1383,8 +1486,8 @@ app.get(
       return;
     }
 
-    res.set("Content-Type", "application/octet-stream");
-    res.set("Cache-Control", "public, max-age=31536000");
+    res.set("content-type", "application/octet-stream");
+    res.set("cache-control", "public, max-age=31536000");
     res.end(file.body.buffer);
   }
 );

@@ -7,6 +7,7 @@
     "start": "pm2 start --name hyalus .",
     "stop": "pm2 stop hyalus",
     "restart": "pm2 restart hyalus",
+    "logs": "pm2 logs hyalus",
     "dev": "nodemon -w src -e js,json ."
   },
   "dependencies": {
@@ -22,7 +23,6 @@
     "msgpack-lite": "^0.1.26",
     "otplib": "^12.0.1",
     "pm2": "^4.5.5",
-    "sharp": "^0.28.1",
     "utf-8-validate": "^5.0.4",
     "winston": "^3.3.3",
     "ws": "^7.4.2"

@@ -128,7 +128,7 @@ app.post(
       },
     });
 
-    res.status(204).end();
+    res.end();
   }
 );
 
@@ -182,7 +182,7 @@ app.post(
       },
     });
 
-    res.status(204).end();
+    res.end();
   }
 );
 
@@ -237,8 +237,8 @@ app.post(
       await req.deps.db.collection("sessions").insertOne({
         user: user._id,
         token: crypto.randomBytes(32),
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
         ip: req.ip,
         device: req.headers["user-agent"],
         active: true,
